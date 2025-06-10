@@ -1,0 +1,21 @@
+{
+  "ascii_chars": " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  "ascii_chars_simple": " .:-=+*#%@",
+  "ascii_chars_detailed": " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  "output_dir": "ascii_frames",
+  "frame_width": 120,
+  "frame_height": null,
+  "aspect_ratio_correction": 0.55,
+  "brightness": 1.2,
+  "contrast": 1.1,
+  "saturation": 1.0,
+  "sharpness": 1.0,
+  "gamma": 0.9,
+  "fps_limit": 24,
+  "start_time": 0,
+  "duration": null,
+  "frame_skip": 1,
+  "invert": false,
+  "add_padding": false,
+  "padding_char": " "
+} 
