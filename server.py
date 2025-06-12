@@ -11,14 +11,20 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'ascii_converter_secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# 全局变量存储当前转换状态
-current_conversion = {
-    'status': 'idle',  # idle, running, completed, error
-    'progress': 0,
-    'current_frame': 0,
-    'total_frames': 0,
-    'message': ''
-}
+# 全局变量存储每个用户的转换状态
+user_conversions = {}
+
+def get_user_conversion_state(user_id):
+    """获取或创建用户的转换状态"""
+    if user_id not in user_conversions:
+        user_conversions[user_id] = {
+            'status': 'idle',  # idle, running, completed, error
+            'progress': 0,
+            'current_frame': 0,
+            'total_frames': 0,
+            'message': ''
+        }
+    return user_conversions[user_id]
 
 @app.route('/')
 def index():
@@ -28,19 +34,24 @@ def index():
 @app.route('/api/convert', methods=['POST'])
 def convert_video():
     """处理视频转换请求"""
-    global current_conversion
-    
-    # 检查是否已有转换在进行中
-    if current_conversion['status'] == 'running':
-        return jsonify({'error': '已有转换任务在进行中'}), 400
-    
     try:
         data = request.json
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'error': '用户ID不能为空'}), 400
+            
         video_file = data.get('video_file', 'bottom-banner.mp4')
         params = data.get('params', {})
         
+        # 获取用户转换状态
+        user_conversion = get_user_conversion_state(user_id)
+        
+        # 检查是否已有转换在进行中
+        if user_conversion['status'] == 'running':
+            return jsonify({'error': '您已有转换任务在进行中'}), 400
+        
         # 重置转换状态
-        current_conversion.update({
+        user_conversion.update({
             'status': 'running',
             'progress': 0,
             'current_frame': 0,
@@ -48,35 +59,43 @@ def convert_video():
             'message': '正在启动转换...'
         })
         
-        # 广播开始状态
-        socketio.emit('conversion_update', current_conversion)
+        # 广播开始状态（发送给特定用户）
+        socketio.emit('conversion_update', user_conversion, room=user_id)
         
         # 在新线程中执行转换
-        thread = threading.Thread(target=perform_conversion, args=(video_file, params))
+        thread = threading.Thread(target=perform_conversion, args=(user_id, video_file, params))
         thread.daemon = True
         thread.start()
         
         return jsonify({'message': '转换已开始', 'status': 'running'})
         
     except Exception as e:
-        current_conversion.update({
-            'status': 'error',
-            'message': f'启动转换失败: {str(e)}'
-        })
-        socketio.emit('conversion_update', current_conversion)
+        if 'user_id' in locals():
+            user_conversion = get_user_conversion_state(user_id)
+            user_conversion.update({
+                'status': 'error',
+                'message': f'启动转换失败: {str(e)}'
+            })
+            socketio.emit('conversion_update', user_conversion, room=user_id)
         return jsonify({'error': str(e)}), 500
 
-def perform_conversion(video_file, params):
+def perform_conversion(user_id, video_file, params):
     """执行视频转换的实际工作"""
-    global current_conversion
+    user_conversion = get_user_conversion_state(user_id)
     
     try:
         # 构建配置
         config = DEFAULT_CONFIG.copy()
         
+        # 设置用户专属输出目录
+        output_dir = f'ascii_frames_{user_id}'
+        config['output_dir'] = output_dir
+        
+        # 确保用户目录存在
+        os.makedirs(output_dir, exist_ok=True)
+        
         # 更新配置参数
         config.update({
-            'output_dir': params.get('output_dir', 'ascii_frames'),
             'frame_width': int(params.get('frame_width', 100)),
             'frame_height': int(params.get('frame_height')) if params.get('frame_height') else None,
             'brightness': float(params.get('brightness', 1.0)),
@@ -105,22 +124,22 @@ def perform_conversion(video_file, params):
         
         # 定义进度回调函数
         def progress_callback(progress, current, total):
-            current_conversion.update({
+            user_conversion.update({
                 'progress': progress * 100,
                 'current_frame': current,
                 'total_frames': total,
                 'message': f'正在处理第 {current}/{total} 帧'
             })
-            socketio.emit('conversion_update', current_conversion)
+            socketio.emit('conversion_update', user_conversion, room=user_id)
         
         # 执行转换
-        current_conversion['message'] = '正在分析视频...'
-        socketio.emit('conversion_update', current_conversion)
+        user_conversion['message'] = '正在分析视频...'
+        socketio.emit('conversion_update', user_conversion, room=user_id)
         
         frame_count = converter.video_to_ascii_frames(video_file, progress_callback)
         
         if frame_count > 0:
-            current_conversion.update({
+            user_conversion.update({
                 'status': 'completed',
                 'progress': 100,
                 'current_frame': frame_count,
@@ -128,24 +147,34 @@ def perform_conversion(video_file, params):
                 'message': f'转换完成！共生成 {frame_count} 帧'
             })
         else:
-            current_conversion.update({
+            user_conversion.update({
                 'status': 'error',
                 'message': '转换失败：未生成任何帧'
             })
             
     except Exception as e:
-        current_conversion.update({
+        user_conversion.update({
             'status': 'error',
             'message': f'转换失败: {str(e)}'
         })
     
     # 广播最终状态
-    socketio.emit('conversion_update', current_conversion)
+    socketio.emit('conversion_update', user_conversion, room=user_id)
 
-@app.route('/api/status')
+@app.route('/api/status', methods=['GET', 'POST'])
 def get_status():
     """获取当前转换状态"""
-    return jsonify(current_conversion)
+    if request.method == 'POST':
+        data = request.json or {}
+        user_id = data.get('user_id')
+    else:
+        user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({'error': '用户ID不能为空'}), 400
+        
+    user_conversion = get_user_conversion_state(user_id)
+    return jsonify(user_conversion)
 
 @app.route('/api/config')
 def get_default_config():
@@ -155,31 +184,54 @@ def get_default_config():
 @app.route('/api/cancel', methods=['POST'])
 def cancel_conversion():
     """取消当前转换（简单实现）"""
-    global current_conversion
+    data = request.json
+    user_id = data.get('user_id')
+    if not user_id:
+        return jsonify({'error': '用户ID不能为空'}), 400
     
-    if current_conversion['status'] == 'running':
-        current_conversion.update({
+    user_conversion = get_user_conversion_state(user_id)
+    
+    if user_conversion['status'] == 'running':
+        user_conversion.update({
             'status': 'idle',
             'progress': 0,
             'current_frame': 0,
             'total_frames': 0,
             'message': '转换已取消'
         })
-        socketio.emit('conversion_update', current_conversion)
+        socketio.emit('conversion_update', user_conversion, room=user_id)
         return jsonify({'message': '转换已取消'})
     else:
         return jsonify({'message': '没有正在进行的转换'})
 
+@app.route('/ascii_frames_<user_id>/<filename>')
+def serve_user_frames(user_id, filename):
+    """提供用户专属的ASCII帧文件"""
+    try:
+        return send_from_directory(f'ascii_frames_{user_id}', filename)
+    except FileNotFoundError:
+        return "Frame not found", 404
+
 @app.route('/ascii_frames/<filename>')
 def serve_frames(filename):
-    """提供ASCII帧文件"""
+    """提供ASCII帧文件（向后兼容）"""
     return send_from_directory('ascii_frames', filename)
 
 @socketio.on('connect')
 def handle_connect():
     """WebSocket连接建立"""
     print('客户端已连接')
-    emit('conversion_update', current_conversion)
+    # 不再自动发送状态，等待客户端发送用户ID
+
+@socketio.on('join_user_room')
+def handle_join_user_room(data):
+    """客户端加入用户专属房间"""
+    user_id = data.get('user_id')
+    if user_id:
+        from flask_socketio import join_room
+        join_room(user_id)
+        user_conversion = get_user_conversion_state(user_id)
+        emit('conversion_update', user_conversion)
 
 @socketio.on('disconnect')
 def handle_disconnect():

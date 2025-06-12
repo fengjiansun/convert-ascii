@@ -20,6 +20,7 @@
 - **Web服务架构**：Flask + SocketIO实现前后端分离
 - **实时通信**：WebSocket实现进度实时推送
 - **响应式设计**：三栏布局适配不同屏幕
+- **多用户隔离**：每个用户独立的转换状态和文件存储
 
 ## 🚀 快速开始
 
@@ -34,23 +35,31 @@ python start.py
 ```
 
 ### 3. 访问界面
-打开浏览器访问：http://localhost:5000
+打开浏览器访问：http://localhost:5001
+
+> 注意：如果端口5001被占用，系统会自动尝试其他端口
 
 ## 📖 使用方法
 
 ### Web界面使用
-1. **左侧面板 - 生成控制**：
+1. **用户身份管理**：
+   - 首次访问自动生成唯一用户ID
+   - 用户ID存储在浏览器本地，确保文件隔离
+   - 每个用户拥有独立的转换状态和文件目录
+
+2. **左侧面板 - 生成控制**：
+   - 查看当前用户ID
    - 选择视频文件或使用默认文件
    - 配置基础参数（宽度、高度、亮度、对比度）
    - 设置高级参数（伽马值、饱和度、锐度、时间范围）
    - 选择字符集类型或自定义字符集
    - 点击"开始生成"按钮
 
-2. **中间区域 - 动画显示**：
+3. **中间区域 - 动画显示**：
    - 查看生成的ASCII动画
    - 实时显示当前帧内容
 
-3. **右侧面板 - 播放控制**：
+4. **右侧面板 - 播放控制**：
    - 播放/暂停/重置动画
    - 调节播放速度（FPS）
    - 自定义显示效果（字体、颜色、大小等）
@@ -102,26 +111,37 @@ python convert.py video.mp4 \
 
 ```
 convert-ascii/
-├── convert.py          # 核心转换逻辑（保持不变）
-├── server.py           # Web服务器和API
-├── start.py            # 一键启动脚本
-├── index.html          # Web界面
-├── requirements.txt    # 依赖列表
-├── README.md          # 说明文档
-├── ascii_frames/      # 生成的ASCII帧存储目录
-├── bottom-banner.mp4  # 示例视频文件
-└── v.mov             # 另一个示例视频
+├── convert.py              # 核心转换逻辑（保持不变）
+├── server.py               # Web服务器和API
+├── start.py                # 一键启动脚本
+├── index.html              # Web界面
+├── requirements.txt        # 依赖列表
+├── README.md              # 说明文档
+├── test_multiuser.py      # 多用户隔离功能测试
+├── ascii_frames/          # 默认ASCII帧存储目录
+├── ascii_frames_{user_id}/ # 用户专属帧存储目录
+├── bottom-banner.mp4      # 示例视频文件
+└── v.mov                 # 另一个示例视频
 ```
 
 ## 🔗 API接口
 
 Web界面通过以下API与后端交互：
 
-- `POST /api/convert` - 开始视频转换
-- `POST /api/cancel` - 取消当前转换
-- `GET /api/status` - 获取转换状态
+- `POST /api/convert` - 开始视频转换（需要user_id）
+- `POST /api/cancel` - 取消当前转换（需要user_id）
+- `GET /api/status?user_id={id}` - 获取用户转换状态
 - `GET /api/config` - 获取默认配置
-- WebSocket事件 `conversion_update` - 实时进度更新
+- `GET /ascii_frames_{user_id}/{filename}` - 获取用户专属帧文件
+- WebSocket事件 `conversion_update` - 实时进度更新（用户房间隔离）
+
+### 多用户隔离机制
+
+1. **用户ID生成**：每个用户首次访问时自动生成唯一ID
+2. **状态隔离**：每个用户拥有独立的转换状态
+3. **文件隔离**：文件存储在用户专属目录 `ascii_frames_{user_id}/`
+4. **WebSocket房间**：用户加入专属房间，只接收自己的进度更新
+5. **API验证**：所有API调用都需要提供有效的用户ID
 
 ## 🎨 自定义字符集示例
 
@@ -152,10 +172,11 @@ Web界面通过以下API与后端交互：
 ## 🐛 故障排除
 
 ### 常见问题
-1. **Web界面无法访问**：确保端口5000未被占用
+1. **Web界面无法访问**：确保端口5001未被占用
 2. **转换失败**：检查视频文件是否存在且格式支持
 3. **进度不更新**：检查WebSocket连接是否正常
 4. **字符显示异常**：确保使用等宽字体
+5. **用户文件混乱**：清除浏览器LocalStorage重新生成用户ID
 
 ### 调试模式
 ```bash
@@ -166,7 +187,14 @@ python server.py
 
 ## 📝 更新日志
 
-### v2.0 (当前版本)
+### v2.1 (当前版本)
+- 🔐 新增多用户隔离功能
+- 👥 每个用户独立的转换状态和文件存储
+- 🏠 WebSocket房间机制确保进度更新隔离
+- 🆔 自动用户ID生成和管理
+- 🧪 完整的多用户功能测试
+
+### v2.0
 - ✨ 新增完整Web界面
 - 🔄 实时进度显示
 - 🎛️ 可视化参数控制

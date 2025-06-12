@@ -330,6 +330,15 @@
         <div class="generation-panel">
             <h2>🎬 ASCII 帧生成器</h2>
             
+            <!-- 用户ID显示 -->
+            <div class="control-group">
+                <label>当前用户ID</label>
+                <div class="status" id="userIdDisplay">
+                    正在生成用户ID...
+                </div>
+                <div class="value-display">此ID用于隔离不同用户的文件</div>
+            </div>
+            
             <!-- 文件选择 -->
             <div class="control-group">
                 <label>选择视频文件</label>
@@ -542,8 +551,8 @@
     </div>
 
     <script>
-        // WebSocket连接
-        const socket = io();
+        // WebSocket连接（延迟初始化）
+        let socket = null;
         
         // 全局变量
         let frames = [];
@@ -552,6 +561,7 @@
         let isPlaying = false;
         let FRAME_RATE = 30;
         let selectedVideoFile = null;
+        let userId = null;
         
         // DOM元素引用
         const asciiElement = document.getElementById('ascii-art');
@@ -569,10 +579,58 @@
         
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
+            initializeUserId();
             setupEventListeners();
             setupTabs();
             loadExistingFrames();
         });
+        
+        // 初始化用户ID
+        function initializeUserId() {
+            // 尝试从LocalStorage获取现有ID
+            userId = localStorage.getItem('ascii_generator_user_id');
+            
+            if (!userId) {
+                // 如果没有ID，生成一个新的
+                userId = generateRandomId();
+                localStorage.setItem('ascii_generator_user_id', userId);
+            }
+            
+            // 显示用户ID
+            const userIdDisplay = document.getElementById('userIdDisplay');
+            userIdDisplay.textContent = userId;
+            userIdDisplay.className = 'status success';
+            
+            // 用户ID设置完成后初始化WebSocket连接
+            initializeWebSocket();
+        }
+        
+        // 初始化WebSocket连接
+        function initializeWebSocket() {
+            socket = io();
+            
+            // WebSocket事件处理
+            socket.on('conversion_update', function(data) {
+                updateProgress(data);
+            });
+            
+            socket.on('connect', function() {
+                console.log('WebSocket连接已建立');
+                // 加入用户专属房间
+                if (userId) {
+                    socket.emit('join_user_room', { user_id: userId });
+                }
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('WebSocket连接已断开');
+            });
+        }
+        
+        // 生成随机ID
+        function generateRandomId() {
+            return 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+        }
         
         // 设置事件监听器
         function setupEventListeners() {
@@ -700,6 +758,7 @@
                 },
                 body: JSON.stringify({
                     video_file: videoFile,
+                    user_id: userId,
                     params: params
                 })
             })
@@ -719,7 +778,13 @@
         // 取消生成
         function cancelGeneration() {
             fetch('/api/cancel', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -793,18 +858,7 @@
             }
         }
         
-        // WebSocket事件处理
-        socket.on('conversion_update', function(data) {
-            updateProgress(data);
-        });
-        
-        socket.on('connect', function() {
-            console.log('WebSocket连接已建立');
-        });
-        
-        socket.on('disconnect', function() {
-            console.log('WebSocket连接已断开');
-        });
+
         
         // 加载现有帧
         async function loadExistingFrames() {
@@ -819,7 +873,7 @@
             
             while (frameIndex < maxAttempts) {
                 const frameId = frameIndex.toString().padStart(5, '0');
-                const frameUrl = `/ascii_frames/frame_${frameId}.txt`;
+                const frameUrl = `/ascii_frames_${userId}/frame_${frameId}.txt`;
                 
                 try {
                     const response = await fetch(frameUrl);
