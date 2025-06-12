@@ -4,4 +4,7 @@ numpy==1.25.2
 flask==2.3.3
 flask-socketio==5.3.6
 python-socketio==5.9.0
-python-engineio==4.7.1 
+python-engineio==4.7.1
+python-daemon==3.1.2
+lockfile==0.12.2
+requests==2.32.4 

@@ -41,7 +41,7 @@ def main():
     try:
         # 导入并启动服务器
         from server import app, socketio
-        socketio.run(app, host='0.0.0.0', port=5001, debug=False)
+        socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
         print("\n\n👋 服务器已停止")
     except Exception as e:

@@ -243,7 +243,8 @@ if __name__ == '__main__':
     os.makedirs('ascii_frames', exist_ok=True)
     
     print("🚀 ASCII转换服务器启动中...")
-    print("📝 访问 http://localhost:5000 打开控制界面")
+    print("📝 访问 http://localhost:5001 打开控制界面")
     print("🔧 服务器支持实时进度更新和参数调整")
     
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True) 
+    # 生产环境运行配置
+    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True) 

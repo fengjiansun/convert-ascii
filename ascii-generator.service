@@ -1,0 +1,25 @@
+[Unit]
+Description=ASCII Animation Generator Web Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/your/convert-ascii
+Environment=PATH=/path/to/your/convert-ascii/.venv/bin
+ExecStart=/path/to/your/convert-ascii/.venv/bin/python /path/to/your/convert-ascii/start.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ascii-generator
+
+# 安全设置
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/path/to/your/convert-ascii
+
+[Install]
+WantedBy=multi-user.target 
