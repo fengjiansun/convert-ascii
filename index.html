@@ -119,7 +119,7 @@
         
         /* 按钮样式 */
         .btn {
-            padding: 12px 20px;
+            padding: 12px;
             background: #0F0;
             border: none;
             border-radius: 4px;
@@ -484,9 +484,9 @@
             <h2>🎮 动画播放控制</h2>
             
             <div class="play-controls">
-                <button class="btn" id="playBtn">▶️ 播放</button>
-                <button class="btn" id="pauseBtn">⏸️ 暂停</button>
-                <button class="btn" id="resetBtn">⏹️ 重置</button>
+                <button class="btn" id="playBtn" disabled>▶播放</button>
+                <button class="btn" id="pauseBtn" disabled>⏸暂停</button>
+                <button class="btn" id="resetBtn" disabled>⏹重置</button>
             </div>
             
             <div class="control-group">
@@ -760,6 +760,9 @@
                 generateBtn.disabled = true;
                 cancelBtn.disabled = false;
                 
+                // 生成开始时禁用播放控制按钮
+                setPlayControlsEnabled(false);
+                
                 progressFill.style.width = `${data.progress}%`;
                 progressText.textContent = data.message;
                 progressDetail.textContent = `${data.current_frame}/${data.total_frames} 帧`;
@@ -780,6 +783,9 @@
                 cancelBtn.disabled = true;
                 
                 updateGenerationStatus('error', data.message);
+                
+                // 生成失败时保持播放控制按钮禁用
+                setPlayControlsEnabled(false);
             } else {
                 progressContainer.style.display = 'none';
                 generateBtn.disabled = false;
@@ -804,6 +810,9 @@
         async function loadExistingFrames() {
             renderStatus.textContent = "正在检测帧数量...";
             frames = [];
+            
+            // 加载开始时禁用播放控制按钮
+            setPlayControlsEnabled(false);
             
             let frameIndex = 0;
             const maxAttempts = 10000;
@@ -836,12 +845,15 @@
             }
             
             if (frames.length > 0) {
-                renderStatus.textContent = `加载完成！共 ${frames.length} 帧`;
                 asciiElement.textContent = frames[0];
                 setupRenderControls();
+                // 加载完成后启用播放控制按钮
+                setPlayControlsEnabled(true);
             } else {
                 renderStatus.textContent = "未发现帧文件，请先生成";
                 asciiElement.textContent = "等待生成或加载ASCII动画...";
+                // 没有帧文件时保持按钮禁用状态
+                setPlayControlsEnabled(false);
             }
         }
         
@@ -863,9 +875,22 @@
             // 控件已经在setupParameterControls中设置
         }
         
+        // 控制播放按钮状态
+        function setPlayControlsEnabled(enabled) {
+            playBtn.disabled = !enabled;
+            pauseBtn.disabled = !enabled;
+            resetBtn.disabled = !enabled;
+            
+            if (enabled) {
+                renderStatus.textContent = `加载完成！共 ${frames.length} 帧`;
+            } else {
+                renderStatus.textContent = "加载中，请等待...";
+            }
+        }
+        
         // 动画控制函数
         function startAnimation() {
-            if (isPlaying || frames.length === 0) return;
+            if (isPlaying || frames.length === 0 || playBtn.disabled) return;
             
             isPlaying = true;
             playBtn.style.background = '#0d0';
@@ -879,7 +904,7 @@
         }
         
         function pauseAnimation() {
-            if (!isPlaying) return;
+            if (!isPlaying || pauseBtn.disabled) return;
             
             isPlaying = false;
             playBtn.style.background = '#0F0';
@@ -892,6 +917,8 @@
         }
         
         function resetAnimation() {
+            if (resetBtn.disabled) return;
+            
             pauseAnimation();
             currentFrame = 0;
             if (frames.length > 0) {
