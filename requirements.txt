@@ -1,3 +1,7 @@
-opencv-python==4.10.0.84
-Pillow==10.4.0
-numpy<2.0.0 
+opencv-python==4.8.1.78
+Pillow==10.0.1
+numpy==1.25.2
+flask==2.3.3
+flask-socketio==5.3.6
+python-socketio==5.9.0
+python-engineio==4.7.1 

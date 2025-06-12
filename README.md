@@ -1,613 +1,187 @@
-# 🎬 ASCII 字符动效转换器
+# ASCII 动画生成器
 
-一个强大的视频转ASCII字符动画工具，支持将任意视频文件转换为字符动效，并提供网页预览和React/TypeScript组件化方案。
+这是一个将视频转换为ASCII字符动画的工具，现在包含完整的Web界面！
 
-## ✨ 功能特性
+## 🌟 特性
 
-### 🎯 核心功能
-- **视频转换**：支持 MP4、MOV、AVI、GIF 等多种视频格式
-- **实时预览**：内置网页播放器，支持实时参数调整
-- **React组件**：完整的TypeScript支持，类型安全的React组件
-- **高度可定制**：丰富的参数配置，满足各种使用场景
+### 🎬 视频转ASCII帧生成
+- **智能参数控制**：通过Web界面调整所有转换参数
+- **实时进度显示**：WebSocket技术实现实时进度更新
+- **多种字符集**：支持简单、详细和自定义字符集
+- **高级图像处理**：亮度、对比度、伽马值、饱和度、锐度调整
 
-### 🎨 视觉效果
-- **多种字符集**：简化、详细、自定义字符集选择
-- **图像增强**：亮度、对比度、饱和度、锐度、伽马值调整
-- **样式定制**：颜色、字体、透明度、对比度实时调整
-- **播放控制**：通过ref API实现完整的播放控制
+### 🎮 动画播放控制
+- **流畅播放**：可调节帧率播放ASCII动画
+- **视觉效果**：字体大小、颜色、透明度、对比度调整
+- **播放控制**：播放、暂停、重置功能
 
-### 🚀 高级特性
-- **智能处理**：自动帧率检测、跳帧优化、内存管理
-- **批量处理**：支持视频片段截取、帧间隔控制
-- **配置管理**：JSON配置文件支持，便于批量处理
-- **类型安全**：完整的TypeScript类型定义
+### 🔧 技术特点
+- **保持单一职责**：convert.py专注转换逻辑
+- **Web服务架构**：Flask + SocketIO实现前后端分离
+- **实时通信**：WebSocket实现进度实时推送
+- **响应式设计**：三栏布局适配不同屏幕
 
-## 📦 安装
+## 🚀 快速开始
 
-### 环境要求
-- Python 3.7+
-- Node.js 14+ (如果使用React组件)
-- TypeScript 4.0+ (如果使用TypeScript)
-
-### 安装依赖
+### 1. 安装依赖
 ```bash
-# 克隆项目
-git clone <项目地址>
-cd convert-ascii
-
-# 安装Python依赖
 pip install -r requirements.txt
-
-# 如果使用React/TypeScript组件
-npm install react react-dom @types/react @types/react-dom typescript
 ```
 
-## 🎮 快速开始
-
-### 1. 基础转换
+### 2. 启动Web界面
 ```bash
-# 最简单的使用方式
+python start.py
+```
+
+### 3. 访问界面
+打开浏览器访问：http://localhost:5000
+
+## 📖 使用方法
+
+### Web界面使用
+1. **左侧面板 - 生成控制**：
+   - 选择视频文件或使用默认文件
+   - 配置基础参数（宽度、高度、亮度、对比度）
+   - 设置高级参数（伽马值、饱和度、锐度、时间范围）
+   - 选择字符集类型或自定义字符集
+   - 点击"开始生成"按钮
+
+2. **中间区域 - 动画显示**：
+   - 查看生成的ASCII动画
+   - 实时显示当前帧内容
+
+3. **右侧面板 - 播放控制**：
+   - 播放/暂停/重置动画
+   - 调节播放速度（FPS）
+   - 自定义显示效果（字体、颜色、大小等）
+
+### 命令行使用（保持原有功能）
+```bash
+# 基础使用
 python convert.py your_video.mp4
-```
 
-这将在 `ascii_frames` 目录下生成ASCII字符文件。
+# 使用自定义字符集
+python convert.py video.mp4 --charset custom --custom-chars "/>.10"
 
-### 2. 网页预览
-```bash
-# 启动本地服务器预览
-python -m http.server 8000
-```
+# 调整图像参数
+python convert.py video.mp4 --brightness 1.2 --contrast 0.8 --gamma 1.5
 
-然后在浏览器中打开 `http://localhost:8000/index.html`
-
-### 3. React/TypeScript组件使用
-
-#### 基础使用
-```tsx
-import React from 'react';
-import AsciiAnimation from './AsciiAnimation';
-
-function App() {
-  return (
-    <AsciiAnimation 
-      framesUrl="./ascii_frames"
-      fps={30}
-      autoPlay={true}
-    />
-  );
-}
-```
-
-#### 完整控制示例
-```tsx
-import React, { useRef, useState } from 'react';
-import AsciiAnimation, { AsciiAnimationRef } from './AsciiAnimation';
-
-function AdvancedExample() {
-  const animationRef = useRef<AsciiAnimationRef>(null);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePlay = () => {
-    animationRef.current?.play();
-  };
-
-  const handlePause = () => {
-    animationRef.current?.pause();
-  };
-
-  const handleGoToFrame = (frame: number) => {
-    animationRef.current?.goToFrame(frame);
-  };
-
-  return (
-    <div>
-      {/* 自定义控制面板 */}
-      <div>
-        <button onClick={handlePlay}>播放</button>
-        <button onClick={handlePause}>暂停</button>
-        <span>当前帧: {currentFrame}</span>
-        <span>状态: {isPlaying ? '播放中' : '已暂停'}</span>
-      </div>
-
-      {/* ASCII动画组件 */}
-      <AsciiAnimation 
-        ref={animationRef}
-        framesUrl="./ascii_frames"
-        fps={24}
-        color="#00FF00"
-        backgroundColor="#000000"
-        fontSize={12}
-        opacity={0.9}
-        contrast={1.2}
-        autoPlay={false}
-        loop={true}
-        onFrameChange={setCurrentFrame}
-        onPlayStateChange={setIsPlaying}
-        onLoadComplete={(count) => console.log(`加载了 ${count} 帧`)}
-        onLoadError={(error) => console.error('加载失败:', error)}
-        onReady={() => console.log('组件准备完毕')}
-      />
-    </div>
-  );
-}
-```
-
-## 🔧 详细使用说明
-
-### 命令行工具
-
-#### 基础命令
-```bash
-# 指定输出目录和尺寸
-python convert.py video.mp4 -o output_frames -w 150
-
-# 处理视频片段（从第10秒开始，处理30秒）
-python convert.py video.mp4 --start 10 --duration 30
-
-# 跳帧处理（每2帧取1帧）
-python convert.py video.mp4 --skip 2 --fps 15
-```
-
-#### 图像增强
-```bash
-# 调整视觉效果
+# 完整参数示例
 python convert.py video.mp4 \
+  --charset custom \
+  --custom-chars "/>.10" \
+  --width 120 \
   --brightness 1.2 \
-  --contrast 1.1 \
-  --gamma 0.9 \
-  --charset simple
+  --contrast 0.8 \
+  --gamma 1.5 \
+  --start 10 \
+  --duration 30
 ```
 
-#### 高级选项
-```bash
-# 使用配置文件
-python convert.py video.mp4 --config custom_config.json
+## 🎯 核心功能
 
-# 保存当前配置
-python convert.py video.mp4 --save-config my_settings.json
+### 字符集选项
+- **简单字符集**：` .:-=+*#%@` （10个字符）
+- **详细字符集**：完整ASCII字符集（80+字符）
+- **自定义字符集**：用户自定义，如 `/>.10`
 
-# 反转明暗并添加边框
-python convert.py video.mp4 --invert --padding
-```
+### 图像处理参数
+- **亮度调整**：0.1-3.0（默认1.0）
+- **对比度调整**：0.1-3.0（默认1.0）
+- **伽马值**：0.1-3.0（调整中间调）
+- **饱和度**：0.0-2.0（彩色视频预处理）
+- **锐度**：0.0-2.0（增强细节）
 
-### 配置文件
+### 输出控制
+- **帧尺寸**：可设置输出宽度和高度
+- **时间范围**：可指定开始时间和处理时长
+- **跳帧处理**：可设置跳帧间隔节省处理时间
+- **特殊效果**：明暗反转、边框填充
 
-创建 `config.json` 文件自定义所有参数：
-
-```json
-{
-  "frame_width": 120,
-  "brightness": 1.2,
-  "contrast": 1.1,
-  "gamma": 0.9,
-  "fps_limit": 24,
-  "ascii_chars": " .:-=+*#%@",
-  "invert": false,
-  "add_padding": true
-}
-```
-
-## 📚 React/TypeScript 组件 API
-
-### AsciiAnimation 组件属性
-
-```tsx
-interface AsciiAnimationProps {
-  // 数据源（二选一）
-  frames?: string[] | null;              // 预加载的帧数组
-  framesUrl?: string | null;             // 帧文件目录路径
-  
-  // 播放设置
-  fps?: number;                          // 播放帧率，默认30
-  autoPlay?: boolean;                    // 自动播放，默认true
-  loop?: boolean;                        // 循环播放，默认true
-  
-  // 视觉样式
-  color?: string;                        // 字符颜色，默认'#00FF00'
-  backgroundColor?: string;              // 背景颜色，默认'#000000'
-  fontSize?: number;                     // 字体大小，默认10
-  fontFamily?: string;                   // 字体族，默认等宽字体
-  opacity?: number;                      // 透明度，默认1
-  contrast?: number;                     // 对比度，默认1
-  
-  // 样式控制
-  className?: string;                    // 自定义CSS类名
-  style?: React.CSSProperties;          // 内联样式
-  
-  // 事件回调
-  onFrameChange?: (frameIndex: number) => void;          // 帧变化回调
-  onLoadComplete?: (frameCount: number) => void;         // 加载完成回调
-  onLoadError?: (error: Error) => void;                  // 加载失败回调
-  onPlayStateChange?: (isPlaying: boolean) => void;      // 播放状态变化回调
-  onReady?: () => void;                                  // 组件准备就绪回调
-}
-```
-
-### Ref API 方法
-
-```tsx
-interface AsciiAnimationRef {
-  play: () => void;                                      // 开始播放动画
-  pause: () => void;                                     // 暂停动画
-  reset: () => void;                                     // 重置动画到第一帧
-  goToFrame: (frameIndex: number) => void;               // 跳转到指定帧
-  getCurrentFrame: () => number;                         // 获取当前帧索引
-  getTotalFrames: () => number;                          // 获取总帧数
-  getPlayState: () => boolean;                           // 获取播放状态
-  getLoadState: () => {                                  // 获取加载状态
-    isLoading: boolean; 
-    loadError: Error | null;
-  };
-}
-```
-
-### 使用 Ref 进行精确控制
-
-```tsx
-import React, { useRef, useEffect } from 'react';
-import AsciiAnimation, { AsciiAnimationRef } from './AsciiAnimation';
-
-function ControlledPlayer() {
-  const playerRef = useRef<AsciiAnimationRef>(null);
-
-  useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    // 等待加载完成后执行自定义逻辑
-    const checkReady = () => {
-      const { isLoading } = player.getLoadState();
-      if (!isLoading) {
-        // 跳转到第10帧开始播放
-        player.goToFrame(10);
-        player.play();
-      } else {
-        setTimeout(checkReady, 100);
-      }
-    };
-
-    checkReady();
-  }, []);
-
-  const handleCustomControl = () => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    const currentFrame = player.getCurrentFrame();
-    const totalFrames = player.getTotalFrames();
-    
-    if (currentFrame < totalFrames / 2) {
-      // 如果在前半段，跳到后半段
-      player.goToFrame(Math.floor(totalFrames / 2));
-    } else {
-      // 否则重置到开头
-      player.reset();
-    }
-  };
-
-  return (
-    <div>
-      <button onClick={handleCustomControl}>
-        智能跳转
-      </button>
-      
-      <AsciiAnimation 
-        ref={playerRef}
-        framesUrl="./ascii_frames"
-        autoPlay={false}
-        onReady={() => console.log('播放器就绪')}
-      />
-    </div>
-  );
-}
-```
-
-## 📁 项目结构
+## 📁 文件结构
 
 ```
 convert-ascii/
-├── convert.py                 # 核心转换工具
-├── index.html                 # 网页预览器
-├── requirements.txt           # Python依赖
-├── example_config.json        # 配置示例
-├── README.md                  # 说明文档
-│
-├── AsciiAnimation.tsx         # TypeScript React组件
-├── AsciiAnimation.css         # 组件样式
-├── AsciiAnimationExample.tsx  # 使用示例
-│
-├── ascii_frames/              # 输出目录
-│   ├── frame_00000.txt
-│   ├── frame_00001.txt
-│   └── ...
-│
-└── v.mov                      # 示例视频文件
+├── convert.py          # 核心转换逻辑（保持不变）
+├── server.py           # Web服务器和API
+├── start.py            # 一键启动脚本
+├── index.html          # Web界面
+├── requirements.txt    # 依赖列表
+├── README.md          # 说明文档
+├── ascii_frames/      # 生成的ASCII帧存储目录
+├── bottom-banner.mp4  # 示例视频文件
+└── v.mov             # 另一个示例视频
 ```
 
-## ⚙️ 参数详解
+## 🔗 API接口
 
-### 核心参数
+Web界面通过以下API与后端交互：
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `frame_width` | int | 100 | ASCII画面宽度（字符数） |
-| `frame_height` | int? | None | ASCII画面高度（None=自动计算） |
-| `aspect_ratio_correction` | float | 0.55 | 字符宽高比修正系数 |
+- `POST /api/convert` - 开始视频转换
+- `POST /api/cancel` - 取消当前转换
+- `GET /api/status` - 获取转换状态
+- `GET /api/config` - 获取默认配置
+- WebSocket事件 `conversion_update` - 实时进度更新
 
-### 图像处理参数
+## 🎨 自定义字符集示例
 
-| 参数 | 类型 | 范围 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `brightness` | float | 0.5-2.0 | 1.0 | 亮度调整 |
-| `contrast` | float | 0.5-2.0 | 1.0 | 对比度调整 |
-| `saturation` | float | 0.0-2.0 | 1.0 | 饱和度调整 |
-| `sharpness` | float | 0.0-2.0 | 1.0 | 锐度调整 |
-| `gamma` | float | 0.1-3.0 | 1.0 | 伽马值调整 |
-
-### 视频处理参数
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `fps_limit` | float? | 限制输出帧率 |
-| `start_time` | float | 开始时间（秒） |
-| `duration` | float? | 处理时长（秒） |
-| `frame_skip` | int | 跳帧间隔 |
-
-### 字符集选项
-
-| 选项 | 字符集 | 适用场景 |
-|------|--------|----------|
-| `simple` | ` .:-=+*#%@` | 简单场景，文件较小 |
-| `detailed` | ` .'`^",:;Il!i><~+...` | 详细场景，效果更好 |
-| `custom` | 自定义 | 特殊需求 |
-
-## 🎨 使用技巧
-
-### 1. 优化转换质量
 ```bash
-# 提高细节表现
-python convert.py video.mp4 -w 150 --charset detailed --sharpness 1.2
+# 数字风格
+/>.10
 
-# 增强对比度
-python convert.py video.mp4 --contrast 1.3 --gamma 0.8
+# 方块风格  
+░▒▓█
+
+# 圆点风格
+·•●
+
+# 线条风格
+─│┌┐└┘├┤┬┴┼
+
+# 传统ASCII
+ .:-=+*#%@
 ```
 
-### 2. 控制文件大小
-```bash
-# 减少帧数
-python convert.py video.mp4 --fps 15 --skip 2
+## ⚡ 性能优化建议
 
-# 使用简单字符集
-python convert.py video.mp4 --charset simple -w 80
-```
+1. **减少输出宽度**：较小的宽度能显著提升处理速度
+2. **使用跳帧**：对于长视频，可设置跳帧间隔
+3. **限制处理时长**：只处理需要的视频片段
+4. **简化字符集**：使用简单字符集可轻微提升速度
 
-### 3. 处理特定场景
-```bash
-# 处理黑暗场景
-python convert.py dark_video.mp4 --brightness 1.5 --gamma 0.7
-
-# 处理高对比度场景
-python convert.py high_contrast.mp4 --invert --contrast 0.8
-```
-
-## 🌐 网页集成
-
-### 基础集成
-```html
-<!-- 引入样式 -->
-<link rel="stylesheet" href="AsciiAnimation.css">
-
-<!-- 容器 -->
-<div id="ascii-container"></div>
-
-<!-- 脚本 -->
-<script src="your-ascii-player.js"></script>
-```
-
-### 响应式适配
-```css
-.ascii-animation {
-  width: 100%;
-  height: 100vh;
-}
-
-@media (max-width: 768px) {
-  .ascii-animation {
-    font-size: 8px;
-  }
-}
-```
-
-## 🔧 TypeScript 配置
-
-### tsconfig.json 示例
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ES6"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx"
-  },
-  "include": [
-    "src"
-  ]
-}
-```
-
-### 类型定义文件
-如果需要在纯JavaScript项目中使用，可以创建 `AsciiAnimation.d.ts`：
-
-```typescript
-declare module './AsciiAnimation' {
-  import { Component } from 'react';
-  
-  export interface AsciiAnimationProps {
-    frames?: string[] | null;
-    framesUrl?: string | null;
-    fps?: number;
-    color?: string;
-    backgroundColor?: string;
-    fontSize?: number;
-    fontFamily?: string;
-    opacity?: number;
-    contrast?: number;
-    autoPlay?: boolean;
-    loop?: boolean;
-    className?: string;
-    style?: React.CSSProperties;
-    onFrameChange?: (frameIndex: number) => void;
-    onLoadComplete?: (frameCount: number) => void;
-    onLoadError?: (error: Error) => void;
-    onPlayStateChange?: (isPlaying: boolean) => void;
-    onReady?: () => void;
-  }
-  
-  export interface AsciiAnimationRef {
-    play: () => void;
-    pause: () => void;
-    reset: () => void;
-    goToFrame: (frameIndex: number) => void;
-    getCurrentFrame: () => number;
-    getTotalFrames: () => number;
-    getPlayState: () => boolean;
-    getLoadState: () => { isLoading: boolean; loadError: Error | null };
-  }
-  
-  const AsciiAnimation: React.ForwardRefExoticComponent<
-    AsciiAnimationProps & React.RefAttributes<AsciiAnimationRef>
-  >;
-  
-  export default AsciiAnimation;
-}
-```
-
-## 🚀 性能优化
-
-### 1. 转换优化
-- 使用适当的 `frame_width`（建议80-150）
-- 合理设置 `frame_skip` 减少帧数
-- 使用 `fps_limit` 控制输出帧率
-
-### 2. 加载优化
-- 使用 `framesUrl` 方式按需加载
-- 对大量帧文件启用gzip压缩
-- 考虑使用CDN托管帧文件
-
-### 3. 播放优化
-- 合理设置播放帧率（推荐15-30fps）
-- 使用CSS硬件加速
-- 避免在低性能设备上使用过高分辨率
-
-### 4. React性能优化
-```tsx
-// 使用 React.memo 避免不必要的重渲染
-const OptimizedAsciiAnimation = React.memo(AsciiAnimation);
-
-// 使用 useMemo 缓存计算结果
-const memoizedProps = useMemo(() => ({
-  framesUrl: './ascii_frames',
-  fps: 30,
-  color: '#00FF00'
-}), []);
-
-// 使用 useCallback 缓存回调函数
-const handleFrameChange = useCallback((frame: number) => {
-  console.log('Current frame:', frame);
-}, []);
-```
-
-## 🔍 故障排除
+## 🐛 故障排除
 
 ### 常见问题
+1. **Web界面无法访问**：确保端口5000未被占用
+2. **转换失败**：检查视频文件是否存在且格式支持
+3. **进度不更新**：检查WebSocket连接是否正常
+4. **字符显示异常**：确保使用等宽字体
 
-**1. TypeScript 类型错误**
+### 调试模式
 ```bash
-# 确保安装了类型定义
-npm install @types/react @types/react-dom
+# 启用调试模式
+export FLASK_DEBUG=1
+python server.py
 ```
 
-**2. 模块导入错误**
-```bash
-# 重新安装依赖
-pip install -r requirements.txt --force-reinstall
-```
+## 📝 更新日志
 
-**3. 内存不足**
-```bash
-# 减少处理尺寸
-python convert.py video.mp4 -w 80 --skip 2
-```
+### v2.0 (当前版本)
+- ✨ 新增完整Web界面
+- 🔄 实时进度显示
+- 🎛️ 可视化参数控制
+- 🎮 增强的播放控制
+- 🔧 保持命令行工具兼容性
 
-**4. 帧文件加载失败**
-- 检查文件路径是否正确
-- 确保启用了本地服务器
-- 检查CORS设置
-
-**5. React Ref 类型问题**
-```tsx
-// 正确的 ref 类型定义
-const animationRef = useRef<AsciiAnimationRef>(null);
-
-// 使用时进行空值检查
-const handleClick = () => {
-  animationRef.current?.play();
-};
-```
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。详见 LICENSE 文件。
+### v1.0
+- 🎬 基础视频转ASCII功能
+- 📊 命令行参数控制
+- 🎨 多种字符集支持
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交Issue和Pull Request！
 
-### 开发环境搭建
-```bash
-# 克隆仓库
-git clone <项目地址>
-cd convert-ascii
+## �� 许可证
 
-# 安装Python依赖
-pip install -r requirements.txt
-
-# 安装Node.js依赖
-npm install
-
-# TypeScript编译
-npx tsc --noEmit
-
-# 运行测试
-python -m pytest tests/
-npm test
-```
-
-### 代码规范
-- Python代码遵循 PEP 8 规范
-- TypeScript代码使用 ESLint + Prettier
-- 提交信息遵循 Conventional Commits 规范
-
-## 📞 支持
-
-如果你在使用过程中遇到问题，可以：
-
-1. 查看 [常见问题](#-故障排除)
-2. 提交 [Issue](项目地址/issues)
-3. 参考 [示例代码](./AsciiAnimationExample.tsx)
-4. 查看 [类型定义](./AsciiAnimation.tsx)
-
----
-
-**⭐ 如果这个项目对你有帮助，请给个星标支持一下！** 
+MIT License 
