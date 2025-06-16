@@ -21,91 +21,125 @@ Werkzeug appears to be used in a production deployment. Consider switching to a 
  * Running on http://127.0.0.1:5001
  * Running on http://10.20.41.72:5001
 [33mPress CTRL+C to quit[0m
-2025-06-12 13:30:44,521 - ascii-generator - INFO - 🎬 ASCII动画生成器守护进程启动中...
-2025-06-12 13:30:44,522 - ascii-generator - INFO - ==================================================
-2025-06-12 13:30:44,832 - ascii-generator - INFO - ✅ 依赖检查通过
-2025-06-12 13:30:44,832 - ascii-generator - INFO - ✅ 输出目录准备完成
-2025-06-12 13:30:44,832 - ascii-generator - INFO - 🚀 启动Web服务器...
-2025-06-12 13:30:44,832 - ascii-generator - INFO - 📱 服务运行在: http://localhost:5001
-2025-06-12 13:30:44,832 - ascii-generator - INFO - 🔧 功能包括:
-2025-06-12 13:30:44,832 - ascii-generator - INFO -    - 左侧：视频转ASCII参数控制
-2025-06-12 13:30:44,832 - ascii-generator - INFO -    - 中间：ASCII动画显示
-2025-06-12 13:30:44,832 - ascii-generator - INFO -    - 右侧：播放效果控制
-2025-06-12 13:30:44,832 - ascii-generator - INFO -    - 实时进度显示
-2025-06-12 13:30:44,832 - ascii-generator - INFO -    - 多用户隔离支持
-2025-06-12 13:30:44,832 - ascii-generator - INFO - ==================================================
-2025-06-12 13:30:44,860 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5001
- * Running on http://10.20.41.72:5001
-2025-06-12 13:30:44,860 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
-2025-06-12 13:31:08,336 - ascii-generator - INFO - 🎬 ASCII动画生成器守护进程启动中...
-2025-06-12 13:31:08,336 - ascii-generator - INFO - 🎬 ASCII动画生成器守护进程启动中...
-2025-06-12 13:31:08,337 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:08,337 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:08,734 - ascii-generator - INFO - ✅ 依赖检查通过
-2025-06-12 13:31:08,734 - ascii-generator - INFO - ✅ 依赖检查通过
-2025-06-12 13:31:08,735 - ascii-generator - INFO - ✅ 输出目录准备完成
-2025-06-12 13:31:08,735 - ascii-generator - INFO - ✅ 输出目录准备完成
-2025-06-12 13:31:08,735 - ascii-generator - INFO - 🚀 启动Web服务器...
-2025-06-12 13:31:08,735 - ascii-generator - INFO - 🚀 启动Web服务器...
-2025-06-12 13:31:08,735 - ascii-generator - INFO - 📱 服务运行在: http://localhost:5001
-2025-06-12 13:31:08,735 - ascii-generator - INFO - 📱 服务运行在: http://localhost:5001
-2025-06-12 13:31:08,735 - ascii-generator - INFO - 🔧 功能包括:
-2025-06-12 13:31:08,735 - ascii-generator - INFO - 🔧 功能包括:
-2025-06-12 13:31:08,735 - ascii-generator - INFO -    - 左侧：视频转ASCII参数控制
-2025-06-12 13:31:08,735 - ascii-generator - INFO -    - 左侧：视频转ASCII参数控制
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 中间：ASCII动画显示
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 中间：ASCII动画显示
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 右侧：播放效果控制
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 右侧：播放效果控制
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 实时进度显示
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 实时进度显示
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 多用户隔离支持
-2025-06-12 13:31:08,736 - ascii-generator - INFO -    - 多用户隔离支持
-2025-06-12 13:31:08,737 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:08,737 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:08,758 - ascii-generator - ERROR - 启动失败: The Werkzeug web server is not designed to run in production. Pass allow_unsafe_werkzeug=True to the run() method to disable this error.
-2025-06-12 13:31:08,758 - ascii-generator - ERROR - 启动失败: The Werkzeug web server is not designed to run in production. Pass allow_unsafe_werkzeug=True to the run() method to disable this error.
-2025-06-12 13:31:33,302 - ascii-generator - INFO - 🎬 ASCII动画生成器守护进程启动中...
-2025-06-12 13:31:33,302 - ascii-generator - INFO - 🎬 ASCII动画生成器守护进程启动中...
-2025-06-12 13:31:33,303 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:33,303 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:33,755 - ascii-generator - INFO - ✅ 依赖检查通过
-2025-06-12 13:31:33,755 - ascii-generator - INFO - ✅ 依赖检查通过
-2025-06-12 13:31:33,755 - ascii-generator - INFO - ✅ 输出目录准备完成
-2025-06-12 13:31:33,755 - ascii-generator - INFO - ✅ 输出目录准备完成
-2025-06-12 13:31:33,756 - ascii-generator - INFO - 🚀 启动Web服务器...
-2025-06-12 13:31:33,756 - ascii-generator - INFO - 🚀 启动Web服务器...
-2025-06-12 13:31:33,756 - ascii-generator - INFO - 📱 服务运行在: http://localhost:5001
-2025-06-12 13:31:33,756 - ascii-generator - INFO - 📱 服务运行在: http://localhost:5001
-2025-06-12 13:31:33,756 - ascii-generator - INFO - 🔧 功能包括:
-2025-06-12 13:31:33,756 - ascii-generator - INFO - 🔧 功能包括:
-2025-06-12 13:31:33,756 - ascii-generator - INFO -    - 左侧：视频转ASCII参数控制
-2025-06-12 13:31:33,756 - ascii-generator - INFO -    - 左侧：视频转ASCII参数控制
-2025-06-12 13:31:33,756 - ascii-generator - INFO -    - 中间：ASCII动画显示
-2025-06-12 13:31:33,756 - ascii-generator - INFO -    - 中间：ASCII动画显示
-2025-06-12 13:31:33,756 - ascii-generator - INFO -    - 右侧：播放效果控制
-2025-06-12 13:31:33,756 - ascii-generator - INFO -    - 右侧：播放效果控制
-2025-06-12 13:31:33,757 - ascii-generator - INFO -    - 实时进度显示
-2025-06-12 13:31:33,757 - ascii-generator - INFO -    - 实时进度显示
-2025-06-12 13:31:33,757 - ascii-generator - INFO -    - 多用户隔离支持
-2025-06-12 13:31:33,757 - ascii-generator - INFO -    - 多用户隔离支持
-2025-06-12 13:31:33,757 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:33,757 - ascii-generator - INFO - ==================================================
-2025-06-12 13:31:33,778 - werkzeug - WARNING - Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
-2025-06-12 13:31:33,778 - werkzeug - WARNING - Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
- * Serving Flask app 'server'
- * Debug mode: off
-2025-06-12 13:31:33,784 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5001
- * Running on http://10.20.41.72:5001
-2025-06-12 13:31:33,784 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5001
- * Running on http://10.20.41.72:5001
-2025-06-12 13:31:33,784 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
-2025-06-12 13:31:33,784 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
-2025-06-12 13:32:03,191 - ascii-generator - INFO - 收到信号 15，正在关闭服务...
-2025-06-12 13:32:03,191 - ascii-generator - INFO - 收到信号 15，正在关闭服务...
+127.0.0.1 - - [12/Jun/2025 17:56:17] "POST /api/clear_frames HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:17] "POST /api/convert HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:17] "GET /api/status?user_id=test_frame_management_user HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:18] "GET /api/status?user_id=test_frame_management_user HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:19] "GET /api/status?user_id=test_frame_management_user HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:19] "POST /api/convert HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:20] "[31m[1mPOST /api/clear_frames HTTP/1.1[0m" 400 -
+127.0.0.1 - - [12/Jun/2025 17:56:20] "POST /api/cancel HTTP/1.1" 200 -
+视频信息：239 帧，60.00 FPS
+已生成: ascii_frames_test_frame_management_user/frame_00000.txt (1/60)
+已生成: ascii_frames_test_frame_management_user/frame_00001.txt (2/60)
+已生成: ascii_frames_test_frame_management_user/frame_00002.txt (3/60)
+已生成: ascii_frames_test_frame_management_user/frame_00003.txt (4/60)
+已生成: ascii_frames_test_frame_management_user/frame_00004.txt (5/60)
+已生成: ascii_frames_test_frame_management_user/frame_00005.txt (6/60)
+已生成: ascii_frames_test_frame_management_user/frame_00006.txt (7/60)
+已生成: ascii_frames_test_frame_management_user/frame_00007.txt (8/60)
+已生成: ascii_frames_test_frame_management_user/frame_00008.txt (9/60)
+已生成: ascii_frames_test_frame_management_user/frame_00009.txt (10/60)
+已生成: ascii_frames_test_frame_management_user/frame_00010.txt (11/60)
+已生成: ascii_frames_test_frame_management_user/frame_00011.txt (12/60)
+已生成: ascii_frames_test_frame_management_user/frame_00012.txt (13/60)
+已生成: ascii_frames_test_frame_management_user/frame_00013.txt (14/60)
+已生成: ascii_frames_test_frame_management_user/frame_00014.txt (15/60)
+已生成: ascii_frames_test_frame_management_user/frame_00015.txt (16/60)
+已生成: ascii_frames_test_frame_management_user/frame_00016.txt (17/60)
+已生成: ascii_frames_test_frame_management_user/frame_00017.txt (18/60)
+已生成: ascii_frames_test_frame_management_user/frame_00018.txt (19/60)
+已生成: ascii_frames_test_frame_management_user/frame_00019.txt (20/60)
+已生成: ascii_frames_test_frame_management_user/frame_00020.txt (21/60)
+已生成: ascii_frames_test_frame_management_user/frame_00021.txt (22/60)
+已生成: ascii_frames_test_frame_management_user/frame_00022.txt (23/60)
+已生成: ascii_frames_test_frame_management_user/frame_00023.txt (24/60)
+已生成: ascii_frames_test_frame_management_user/frame_00024.txt (25/60)
+已生成: ascii_frames_test_frame_management_user/frame_00025.txt (26/60)
+已生成: ascii_frames_test_frame_management_user/frame_00026.txt (27/60)
+已生成: ascii_frames_test_frame_management_user/frame_00027.txt (28/60)
+已生成: ascii_frames_test_frame_management_user/frame_00028.txt (29/60)
+已生成: ascii_frames_test_frame_management_user/frame_00029.txt (30/60)
+已生成: ascii_frames_test_frame_management_user/frame_00030.txt (31/60)
+已生成: ascii_frames_test_frame_management_user/frame_00031.txt (32/60)
+已生成: ascii_frames_test_frame_management_user/frame_00032.txt (33/60)
+已生成: ascii_frames_test_frame_management_user/frame_00033.txt (34/60)
+已生成: ascii_frames_test_frame_management_user/frame_00034.txt (35/60)
+已生成: ascii_frames_test_frame_management_user/frame_00035.txt (36/60)
+已生成: ascii_frames_test_frame_management_user/frame_00036.txt (37/60)
+已生成: ascii_frames_test_frame_management_user/frame_00037.txt (38/60)
+已生成: ascii_frames_test_frame_management_user/frame_00038.txt (39/60)
+已生成: ascii_frames_test_frame_management_user/frame_00039.txt (40/60)
+已生成: ascii_frames_test_frame_management_user/frame_00040.txt (41/60)
+已生成: ascii_frames_test_frame_management_user/frame_00041.txt (42/60)
+已生成: ascii_frames_test_frame_management_user/frame_00042.txt (43/60)
+已生成: ascii_frames_test_frame_management_user/frame_00043.txt (44/60)
+已生成: ascii_frames_test_frame_management_user/frame_00044.txt (45/60)
+已生成: ascii_frames_test_frame_management_user/frame_00045.txt (46/60)
+已生成: ascii_frames_test_frame_management_user/frame_00046.txt (47/60)
+已生成: ascii_frames_test_frame_management_user/frame_00047.txt (48/60)
+已生成: ascii_frames_test_frame_management_user/frame_00048.txt (49/60)
+已生成: ascii_frames_test_frame_management_user/frame_00049.txt (50/60)
+已生成: ascii_frames_test_frame_management_user/frame_00050.txt (51/60)
+已生成: ascii_frames_test_frame_management_user/frame_00051.txt (52/60)
+已生成: ascii_frames_test_frame_management_user/frame_00052.txt (53/60)
+已生成: ascii_frames_test_frame_management_user/frame_00053.txt (54/60)
+已生成: ascii_frames_test_frame_management_user/frame_00054.txt (55/60)
+已生成: ascii_frames_test_frame_management_user/frame_00055.txt (56/60)
+已生成: ascii_frames_test_frame_management_user/frame_00056.txt (57/60)
+已生成: ascii_frames_test_frame_management_user/frame_00057.txt (58/60)
+已生成: ascii_frames_test_frame_management_user/frame_00058.txt (59/60)
+已生成: ascii_frames_test_frame_management_user/frame_00059.txt (60/60)
+
+转换完成！总共 60 帧。
+文件保存在 'ascii_frames_test_frame_management_user' 目录下。
+视频信息：239 帧，60.00 FPS
+已生成: ascii_frames_test_frame_management_user/frame_00000.txt (1/60)
+已生成: ascii_frames_test_frame_management_user/frame_00001.txt (2/60)
+已生成: ascii_frames_test_frame_management_user/frame_00002.txt (3/60)
+已生成: ascii_frames_test_frame_management_user/frame_00003.txt (4/60)
+已生成: ascii_frames_test_frame_management_user/frame_00004.txt (5/60)
+已生成: ascii_frames_test_frame_management_user/frame_00005.txt (6/60)
+已生成: ascii_frames_test_frame_management_user/frame_00006.txt (7/60)
+已生成: ascii_frames_test_frame_management_user/frame_00007.txt (8/60)
+已生成: ascii_frames_test_frame_management_user/frame_00008.txt (9/60)
+已生成: ascii_frames_test_frame_management_user/frame_00009.txt (10/60)
+已生成: ascii_frames_test_frame_management_user/frame_00010.txt (11/60)
+已生成: ascii_frames_test_frame_management_user/frame_00011.txt (12/60)
+已生成: ascii_frames_test_frame_management_user/frame_00012.txt (13/60)
+已生成: ascii_frames_test_frame_management_user/frame_00013.txt (14/60)
+已生成: ascii_frames_test_frame_management_user/frame_00014.txt (15/60)
+已生成: ascii_frames_test_frame_management_user/frame_00015.txt (16/60)
+已生成: ascii_frames_test_frame_management_user/frame_00016.txt (17/60)
+已生成: ascii_frames_test_frame_management_user/frame_00017.txt (18/60)
+已生成: ascii_frames_test_frame_management_user/frame_00018.txt (19/60)
+已生成: ascii_frames_test_frame_management_user/frame_00019.txt (20/60)
+已生成: ascii_frames_test_frame_management_user/frame_00020.txt (21/60)
+已生成: ascii_frames_test_frame_management_user/frame_00021.txt (22/60)
+已生成: ascii_frames_test_frame_management_user/frame_00022.txt (23/60)
+已生成: ascii_frames_test_frame_management_user/frame_00023.txt (24/60)
+已生成: ascii_frames_test_frame_management_user/frame_00024.txt (25/60)
+已生成: ascii_frames_test_frame_management_user/frame_00025.txt (26/60)
+已生成: ascii_frames_test_frame_management_user/frame_00026.txt (27/60)
+已生成: ascii_frames_test_frame_management_user/frame_00027.txt (28/60)
+已生成: ascii_frames_test_frame_management_user/frame_00028.txt (29/60)
+已生成: ascii_frames_test_frame_management_user/frame_00029.txt (30/60)
+已生成: ascii_frames_test_frame_management_user/frame_00030.txt (31/60)
+已生成: ascii_frames_test_frame_management_user/frame_00031.txt (32/60)
+已生成: ascii_frames_test_frame_management_user/frame_00032.txt (33/60)
+已生成: ascii_frames_test_frame_management_user/frame_00033.txt (34/60)
+已生成: ascii_frames_test_frame_management_user/frame_00034.txt (35/60)
+已生成: ascii_frames_test_frame_management_user/frame_00035.txt (36/60)
+已生成: ascii_frames_test_frame_management_user/frame_00036.txt (37/60)
+已生成: ascii_frames_test_frame_management_user/frame_00037.txt (38/60)
+已生成: ascii_frames_test_frame_management_user/frame_00038.txt (39/60)
+已生成: ascii_frames_test_frame_management_user/frame_00039.txt (40/60)
+已生成: ascii_frames_test_frame_management_user/frame_00040.txt (41/60)
+已生成: ascii_frames_test_frame_management_user/frame_00041.txt (42/60)
+已生成: ascii_frames_test_frame_management_user/frame_00042.txt (43/60)
+已生成: ascii_frames_test_frame_management_user/frame_00043.txt (44/60)
+已生成: ascii_frames_test_frame_management_user/frame_00044.txt (45/60)
+已生成: ascii_frames_test_frame_management_user/frame_00045.txt (46/60)
+已生成: ascii_frames_test_frame_management_user/frame_00046.txt (47/60)
+127.0.0.1 - - [12/Jun/2025 17:56:21] "POST /api/clear_frames HTTP/1.1" 200 -
+127.0.0.1 - - [12/Jun/2025 17:56:21] "[31m[1mPOST /api/clear_frames HTTP/1.1[0m" 400 -

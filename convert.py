@@ -35,6 +35,7 @@ DEFAULT_CONFIG = {
     "invert": False,    # 是否反转明暗
     "add_padding": False,  # 是否添加边框填充
     "padding_char": " ",   # 填充字符
+    "mirror_frames": False,  # 是否镜像帧（创建往返动画效果）
 }
 
 class AsciiConverter:
@@ -225,6 +226,31 @@ class AsciiConverter:
             os.remove(temp_frame_path)
             
         cap.release()
+        
+        # 如果启用镜像帧，创建往返效果
+        if self.config.get("mirror_frames", False) and processed_count > 1:
+            print(f"\n正在生成镜像帧...")
+            original_count = processed_count
+            
+            # 从倒数第二帧开始向前复制（避免重复最后一帧）
+            for i in range(original_count - 2, -1, -1):
+                source_file = os.path.join(self.config["output_dir"], f"frame_{i:05d}.txt")
+                target_file = os.path.join(self.config["output_dir"], f"frame_{processed_count:05d}.txt")
+                
+                if os.path.exists(source_file):
+                    with open(source_file, 'r', encoding='utf-8') as src:
+                        content = src.read()
+                    with open(target_file, 'w', encoding='utf-8') as dst:
+                        dst.write(content)
+                    processed_count += 1
+                    
+                    # 进度回调
+                    if progress_callback:
+                        progress = (processed_count - original_count) / original_count
+                        progress_callback(progress, processed_count - original_count, original_count)
+            
+            print(f"镜像帧生成完成！添加了 {processed_count - original_count} 个镜像帧。")
+        
         print(f"\n转换完成！总共 {processed_count} 帧。")
         print(f"文件保存在 '{self.config['output_dir']}' 目录下。")
         
@@ -265,6 +291,7 @@ def main():
     parser.add_argument("--custom-chars", help="自定义ASCII字符集")
     parser.add_argument("--invert", action="store_true", help="反转明暗")
     parser.add_argument("--padding", action="store_true", help="添加边框填充")
+    parser.add_argument("--mirror", action="store_true", help="生成镜像帧（往返动画效果）")
     
     # 配置文件
     parser.add_argument("--config", help="配置文件路径")
@@ -293,6 +320,7 @@ def main():
             "gamma": args.gamma,
             "invert": args.invert,
             "add_padding": args.padding,
+            "mirror_frames": args.mirror,
         })
         
         # 设置字符集

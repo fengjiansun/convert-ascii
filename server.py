@@ -5,11 +5,19 @@ import os
 import json
 import threading
 import time
+from werkzeug.utils import secure_filename
 from convert import AsciiConverter, DEFAULT_CONFIG
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'ascii_converter_secret'
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# 上传文件存储目录
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'm4v'}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 全局变量存储每个用户的转换状态
 user_conversions = {}
@@ -26,10 +34,54 @@ def get_user_conversion_state(user_id):
         }
     return user_conversions[user_id]
 
+def allowed_file(filename):
+    """检查文件扩展名是否被允许"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/')
 def index():
     """提供index.html文件"""
     return send_from_directory('.', 'index.html')
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """处理文件上传"""
+    try:
+        # 检查是否有文件在请求中
+        if 'file' not in request.files:
+            return jsonify({'error': '没有选择文件'}), 400
+        
+        file = request.files['file']
+        user_id = request.form.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': '用户ID不能为空'}), 400
+            
+        # 如果用户没有选择文件，浏览器也会提交一个空的文件
+        if file.filename == '':
+            return jsonify({'error': '没有选择文件'}), 400
+            
+        if file and allowed_file(file.filename):
+            # 创建用户专属的上传目录
+            user_upload_dir = os.path.join(UPLOAD_FOLDER, user_id)
+            os.makedirs(user_upload_dir, exist_ok=True)
+            
+            # 安全化文件名并保存
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(user_upload_dir, filename)
+            file.save(filepath)
+            
+            return jsonify({
+                'message': '文件上传成功',
+                'filename': filename,
+                'filepath': filepath
+            })
+        else:
+            return jsonify({'error': '不支持的文件格式，请上传视频文件'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': f'上传失败: {str(e)}'}), 500
 
 @app.route('/api/convert', methods=['POST'])
 def convert_video():
@@ -42,6 +94,13 @@ def convert_video():
             
         video_file = data.get('video_file', 'bottom-banner.mp4')
         params = data.get('params', {})
+        
+        # 如果是上传的文件，使用完整路径
+        if video_file != 'bottom-banner.mp4' and not os.path.isabs(video_file):
+            user_upload_dir = os.path.join(UPLOAD_FOLDER, user_id)
+            uploaded_file_path = os.path.join(user_upload_dir, video_file)
+            if os.path.exists(uploaded_file_path):
+                video_file = uploaded_file_path
         
         # 获取用户转换状态
         user_conversion = get_user_conversion_state(user_id)
@@ -91,6 +150,18 @@ def perform_conversion(user_id, video_file, params):
         output_dir = f'ascii_frames_{user_id}'
         config['output_dir'] = output_dir
         
+        # 清空用户目录中的旧frame文件
+        if os.path.exists(output_dir):
+            import glob
+            old_frames = glob.glob(os.path.join(output_dir, 'frame_*.txt'))
+            for old_frame in old_frames:
+                try:
+                    os.remove(old_frame)
+                except OSError:
+                    pass  # 忽略删除失败的文件
+            user_conversion['message'] = f'已清理 {len(old_frames)} 个旧帧文件'
+            socketio.emit('conversion_update', user_conversion, room=user_id)
+        
         # 确保用户目录存在
         os.makedirs(output_dir, exist_ok=True)
         
@@ -108,6 +179,7 @@ def perform_conversion(user_id, video_file, params):
             'frame_skip': int(params.get('frame_skip', 1)),
             'invert': params.get('invert', False),
             'add_padding': params.get('padding', False),
+            'mirror_frames': params.get('mirror_frames', False),
         })
         
         # 设置字符集
@@ -203,6 +275,57 @@ def cancel_conversion():
         return jsonify({'message': '转换已取消'})
     else:
         return jsonify({'message': '没有正在进行的转换'})
+
+@app.route('/api/clear_frames', methods=['POST'])
+def clear_frames():
+    """清空用户的所有frame文件"""
+    data = request.json
+    user_id = data.get('user_id')
+    if not user_id:
+        return jsonify({'error': '用户ID不能为空'}), 400
+    
+    user_conversion = get_user_conversion_state(user_id)
+    
+    # 检查是否有转换正在进行
+    if user_conversion['status'] == 'running':
+        return jsonify({'error': '转换正在进行中，无法清空文件'}), 400
+    
+    try:
+        output_dir = f'ascii_frames_{user_id}'
+        if os.path.exists(output_dir):
+            import glob
+            frame_files = glob.glob(os.path.join(output_dir, 'frame_*.txt'))
+            cleared_count = 0
+            
+            for frame_file in frame_files:
+                try:
+                    os.remove(frame_file)
+                    cleared_count += 1
+                except OSError:
+                    pass  # 忽略删除失败的文件
+            
+            # 更新用户状态
+            user_conversion.update({
+                'status': 'idle',
+                'progress': 0,
+                'current_frame': 0,
+                'total_frames': 0,
+                'message': f'已清空 {cleared_count} 个帧文件'
+            })
+            socketio.emit('conversion_update', user_conversion, room=user_id)
+            
+            return jsonify({
+                'message': f'成功清空 {cleared_count} 个帧文件',
+                'cleared_count': cleared_count
+            })
+        else:
+            return jsonify({
+                'message': '用户目录不存在，无需清空',
+                'cleared_count': 0
+            })
+            
+    except Exception as e:
+        return jsonify({'error': f'清空失败: {str(e)}'}), 500
 
 @app.route('/ascii_frames_<user_id>/<filename>')
 def serve_user_frames(user_id, filename):
