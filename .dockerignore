@@ -1,0 +1,77 @@
+# Git相关
+.git
+.gitignore
+
+# Python相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE相关
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 测试相关
+.coverage
+.pytest_cache/
+.tox/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# 文档相关
+README.md
+DEPLOYMENT.md
+*.md
+
+# 示例文件（可选，如果不想包含示例视频）
+# *.mp4
+# *.mov
+# *.avi
+
+# 用户上传的文件（运行时生成）
+uploads/
+ascii_frames_*/
+
+# Docker相关
+Dockerfile*
+docker-compose*.yml
+.dockerignore
