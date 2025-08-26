@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  ascii-converter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ascii-converter
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=server.py
+    volumes:
+      # 持久化存储用户上传的文件和生成的ASCII帧
+      - ./uploads:/app/uploads
+      - ./ascii_frames:/app/ascii_frames
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ascii-network
+
+  # 可选：Nginx反向代理（用于生产环境）
+  nginx:
+    image: nginx:alpine
+    container_name: ascii-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL证书目录
+    depends_on:
+      - ascii-converter
+    restart: unless-stopped
+    networks:
+      - ascii-network
+    profiles:
+      - production
+
+networks:
+  ascii-network:
+    driver: bridge
+
+volumes:
+  uploads:
+  ascii_frames:
+  logs:

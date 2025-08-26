@@ -1,0 +1,202 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ascii-converter
+  labels:
+    app: ascii-converter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ascii-converter
+  template:
+    metadata:
+      labels:
+        app: ascii-converter
+    spec:
+      containers:
+      - name: ascii-converter
+        image: registry.cn-hangzhou.aliyuncs.com/your-namespace/ascii-converter:latest
+        ports:
+        - containerPort: 5001
+          name: http
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: FLASK_APP
+          value: "server.py"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: uploads-storage
+          mountPath: /app/uploads
+        - name: ascii-frames-storage
+          mountPath: /app/ascii_frames
+        - name: logs-storage
+          mountPath: /app/logs
+        livenessProbe:
+          httpGet:
+            path: /api/config
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/config
+            port: 5001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: uploads-storage
+        persistentVolumeClaim:
+          claimName: ascii-converter-uploads
+      - name: ascii-frames-storage
+        persistentVolumeClaim:
+          claimName: ascii-converter-frames
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: ascii-converter-logs
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ascii-converter-service
+  labels:
+    app: ascii-converter
+spec:
+  selector:
+    app: ascii-converter
+  ports:
+  - port: 80
+    targetPort: 5001
+    protocol: TCP
+    name: http
+  type: ClusterIP
+
+---
+# 负载均衡器服务 (用于公网访问)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ascii-converter-lb
+  labels:
+    app: ascii-converter
+  annotations:
+    service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: "slb.s2.small"
+spec:
+  selector:
+    app: ascii-converter
+  ports:
+  - port: 80
+    targetPort: 5001
+    protocol: TCP
+    name: http
+  type: LoadBalancer
+
+---
+# 上传文件存储
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ascii-converter-uploads
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: alicloud-disk-efficiency
+
+---
+# ASCII帧文件存储
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ascii-converter-frames
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: alicloud-disk-efficiency
+
+---
+# 日志存储
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ascii-converter-logs
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: alicloud-disk-efficiency
+
+---
+# Horizontal Pod Autoscaler (自动扩缩容)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ascii-converter-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ascii-converter
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Ingress (可选：用于域名访问和SSL终端)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ascii-converter-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  tls:
+  - hosts:
+    - your-domain.com
+    secretName: ascii-converter-tls
+  rules:
+  - host: your-domain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ascii-converter-service
+            port:
+              number: 80
