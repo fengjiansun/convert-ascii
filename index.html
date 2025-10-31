@@ -607,6 +607,63 @@
                 <input type="range" id="contrastSlider" min="0.5" max="2" step="0.1" value="1">
                 <div class="value-display" id="contrastValue">100%</div>
             </div>
+        </div>
+        
+        <!-- 帧编辑和管理面板 -->
+        <div class="render-panel" style="width: 320px; border-left: 2px solid #0F0;">
+            <h2>✏️ 帧编辑</h2>
+            
+            <div class="control-group">
+                <label for="frameIndexInput">当前帧</label>
+                <input type="number" id="frameIndexInput" min="0" value="0" disabled>
+                <div class="value-display" id="frameCountDisplay">共 0 帧</div>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn" id="prevFrameBtn" disabled>⬅ 上一帧</button>
+                <button class="btn" id="nextFrameBtn" disabled>下一帧 ➡</button>
+            </div>
+            
+            <div class="control-group">
+                <textarea id="frameEditor" rows="10" placeholder="点击编辑当前帧的ASCII内容..." disabled></textarea>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-secondary" id="loadFrameBtn" disabled>🔄 重新加载</button>
+                <button class="btn" id="saveFrameBtn" disabled>💾 保存修改</button>
+            </div>
+            
+            <h3>⚙️ 配置管理</h3>
+            
+            <div class="control-group">
+                <label for="configNameInput">配置名称</label>
+                <input type="text" id="configNameInput" placeholder="输入配置名称">
+            </div>
+            
+            <div class="control-group">
+                <button class="btn" id="saveConfigBtn">💾 保存配置</button>
+                <button class="btn btn-secondary" id="loadConfigBtn">📂 加载配置</button>
+            </div>
+            
+            <div class="control-group">
+                <select id="configList" size="3" style="width: 100%;"></select>
+            </div>
+            
+            <h3>🔄 批量替换</h3>
+            
+            <div class="control-group">
+                <label for="findInput">查找字符</label>
+                <input type="text" id="findInput" placeholder="输入要查找的字符">
+            </div>
+            
+            <div class="control-group">
+                <label for="replaceInput">替换为</label>
+                <input type="text" id="replaceInput" placeholder="输入替换字符">
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-danger" id="batchReplaceBtn" disabled>🚀 批量替换</button>
+            </div>
             
             <div class="status" id="renderStatus">
                 准备就绪
@@ -1215,8 +1272,10 @@
             if (content.includes('<html') || content.includes('<!DOCTYPE')) return false;
             if (content.includes('404') || content.includes('Not Found')) return false;
             
-            const validChars = /^[\x20-\x7E\n\r]*$/;
-            if (!validChars.test(content)) return false;
+            // 支持Unicode字符，包括中文、特殊符号等
+            // 排除控制字符但允许换行、回车和制表符
+            const invalidChars = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
+            if (invalidChars.test(content)) return false;
             
             const nonWhitespaceCount = content.replace(/\s/g, '').length;
             return nonWhitespaceCount >= 5;
@@ -1280,6 +1339,387 @@
             pauseBtn.style.background = '#666';
         }
         
+        // 帧编辑功能
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFrameEditControls();
+            setupConfigManagement();
+            setupBatchReplace();
+        });
+        
+        function setupFrameEditControls() {
+            const frameIndexInput = document.getElementById('frameIndexInput');
+            const frameCountDisplay = document.getElementById('frameCountDisplay');
+            const prevFrameBtn = document.getElementById('prevFrameBtn');
+            const nextFrameBtn = document.getElementById('nextFrameBtn');
+            const frameEditor = document.getElementById('frameEditor');
+            const loadFrameBtn = document.getElementById('loadFrameBtn');
+            const saveFrameBtn = document.getElementById('saveFrameBtn');
+            
+            // 更新帧索引输入框状态
+            function updateFrameIndexInput() {
+                if (frames.length > 0) {
+                    frameIndexInput.disabled = false;
+                    frameIndexInput.max = frames.length - 1;
+                    frameCountDisplay.textContent = `共 ${frames.length} 帧`;
+                } else {
+                    frameIndexInput.disabled = true;
+                    frameIndexInput.value = 0;
+                    frameCountDisplay.textContent = '共 0 帧';
+                }
+            }
+            
+            // 加载指定帧到编辑器
+            async function loadFrameToEditor(frameIndex) {
+                if (frameIndex < 0 || frameIndex >= frames.length) return;
+                
+                try {
+                    const response = await fetch('/api/get_frame', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId, frame_index: frameIndex })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    frameEditor.value = data.frame_content;
+                    frameEditor.disabled = false;
+                    saveFrameBtn.disabled = false;
+                    loadFrameBtn.disabled = false;
+                } catch (error) {
+                    alert('加载帧失败: ' + error.message);
+                }
+            }
+            
+            // 保存编辑器中的帧
+            async function saveFrameFromEditor() {
+                const frameIndex = parseInt(frameIndexInput.value);
+                const frameContent = frameEditor.value;
+                
+                if (frameIndex < 0 || frameIndex >= frames.length) return;
+                if (!frameContent.trim()) return;
+                
+                try {
+                    const response = await fetch('/api/save_frame', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            user_id: userId, 
+                            frame_index: frameIndex, 
+                            frame_content: frameContent 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    alert(data.message);
+                } catch (error) {
+                    alert('保存帧失败: ' + error.message);
+                }
+            }
+            
+            // 实时更新帧显示
+            function updateFrameDisplay(frameIndex, frameContent) {
+                // 更新内存中的帧内容
+                frames[frameIndex] = frameContent;
+                // 如果当前显示的是这一帧，更新显示
+                if (currentFrame === frameIndex) {
+                    asciiElement.textContent = frameContent;
+                }
+            }
+            
+            // 事件监听
+            frameIndexInput.addEventListener('change', function() {
+                const frameIndex = parseInt(this.value);
+                if (frameIndex >= 0 && frameIndex < frames.length) {
+                    loadFrameToEditor(frameIndex);
+                }
+            });
+            
+            // 实时编辑同步
+            frameEditor.addEventListener('input', function() {
+                const frameIndex = parseInt(frameIndexInput.value);
+                const frameContent = this.value;
+                if (frameIndex >= 0 && frameIndex < frames.length) {
+                    updateFrameDisplay(frameIndex, frameContent);
+                }
+            });
+            
+            prevFrameBtn.addEventListener('click', function() {
+                let frameIndex = parseInt(frameIndexInput.value) - 1;
+                if (frameIndex < 0) frameIndex = frames.length - 1;
+                frameIndexInput.value = frameIndex;
+                loadFrameToEditor(frameIndex);
+            });
+            
+            nextFrameBtn.addEventListener('click', function() {
+                let frameIndex = parseInt(frameIndexInput.value) + 1;
+                if (frameIndex >= frames.length) frameIndex = 0;
+                frameIndexInput.value = frameIndex;
+                loadFrameToEditor(frameIndex);
+            });
+            
+            loadFrameBtn.addEventListener('click', function() {
+                const frameIndex = parseInt(frameIndexInput.value);
+                loadFrameToEditor(frameIndex);
+            });
+            
+            saveFrameBtn.addEventListener('click', saveFrameFromEditor);
+            
+            // 在动画播放时更新当前帧索引
+            const originalStartAnimation = startAnimation;
+            startAnimation = function() {
+                originalStartAnimation();
+                // 每帧更新编辑器
+                if (animationInterval) {
+                    clearInterval(animationInterval);
+                    animationInterval = setInterval(() => {
+                        asciiElement.textContent = frames[currentFrame];
+                        frameIndexInput.value = currentFrame;
+                        currentFrame = (currentFrame + 1) % frames.length;
+                    }, 1000 / FRAME_RATE);
+                }
+            };
+            
+            // 暂停时加载当前帧到编辑器
+            pauseBtn.addEventListener('click', function() {
+                if (!isPlaying) {
+                    frameIndexInput.value = currentFrame;
+                    loadFrameToEditor(currentFrame);
+                }
+            });
+            
+            // 重置时加载第一帧到编辑器
+            resetBtn.addEventListener('click', function() {
+                frameIndexInput.value = 0;
+                loadFrameToEditor(0);
+            });
+            
+            // 帧加载完成后更新编辑器状态
+            const originalSetPlayControlsEnabled = setPlayControlsEnabled;
+            setPlayControlsEnabled = function(enabled) {
+                originalSetPlayControlsEnabled(enabled);
+                prevFrameBtn.disabled = !enabled;
+                nextFrameBtn.disabled = !enabled;
+                if (enabled) {
+                    frameIndexInput.value = currentFrame;
+                    loadFrameToEditor(currentFrame);
+                }
+                updateFrameIndexInput();
+            };
+        }
+        
+        // 配置管理功能
+        function setupConfigManagement() {
+            const configNameInput = document.getElementById('configNameInput');
+            const saveConfigBtn = document.getElementById('saveConfigBtn');
+            const loadConfigBtn = document.getElementById('loadConfigBtn');
+            const configList = document.getElementById('configList');
+            
+            // 列出所有配置
+            async function listConfigs() {
+                try {
+                    const response = await fetch('/api/list_configs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    configList.innerHTML = '';
+                    data.configs.forEach(configName => {
+                        const option = document.createElement('option');
+                        option.value = configName;
+                        option.textContent = configName;
+                        configList.appendChild(option);
+                    });
+                } catch (error) {
+                    alert('列出配置失败: ' + error.message);
+                }
+            }
+            
+            // 保存配置
+            async function saveConfig() {
+                const configName = configNameInput.value.trim();
+                if (!configName) {
+                    alert('请输入配置名称');
+                    return;
+                }
+                
+                const config = collectGenerationParams();
+                
+                try {
+                    const response = await fetch('/api/save_config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            user_id: userId, 
+                            config_name: configName, 
+                            config: config 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    alert(data.message);
+                    configNameInput.value = '';
+                    listConfigs(); // 更新配置列表
+                } catch (error) {
+                    alert('保存配置失败: ' + error.message);
+                }
+            }
+            
+            // 加载配置
+            async function loadConfig() {
+                const configName = configList.value;
+                if (!configName) {
+                    alert('请选择要加载的配置');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/load_config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            user_id: userId, 
+                            config_name: configName 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    const config = data.config;
+                    // 应用配置到表单
+                    document.getElementById('frameWidth').value = config.frame_width;
+                    document.getElementById('frameWidthValue').textContent = config.frame_width + ' 字符';
+                    
+                    document.getElementById('frameHeight').value = config.frame_height || '';
+                    
+                    document.getElementById('brightness').value = config.brightness;
+                    document.getElementById('brightnessValue').textContent = config.brightness;
+                    
+                    document.getElementById('contrast').value = config.contrast;
+                    document.getElementById('contrastValue').textContent = config.contrast;
+                    
+                    document.getElementById('gamma').value = config.gamma;
+                    document.getElementById('gammaValue').textContent = config.gamma;
+                    
+                    document.getElementById('saturation').value = config.saturation;
+                    document.getElementById('saturationValue').textContent = config.saturation;
+                    
+                    document.getElementById('sharpness').value = config.sharpness;
+                    document.getElementById('sharpnessValue').textContent = config.sharpness;
+                    
+                    document.getElementById('startTime').value = config.start_time;
+                    document.getElementById('duration').value = config.duration || '';
+                    document.getElementById('frameSkip').value = config.frame_skip;
+                    document.getElementById('charsetType').value = config.charset;
+                    document.getElementById('customChars').value = config.custom_chars || '';
+                    document.getElementById('invert').checked = config.invert;
+                    document.getElementById('padding').checked = config.padding;
+                    document.getElementById('mirrorFrames').checked = config.mirror_frames;
+                    
+                    // 显示/隐藏自定义字符集输入框
+                    const customGroup = document.getElementById('customCharsGroup');
+                    customGroup.style.display = config.charset === 'custom' ? 'block' : 'none';
+                    
+                    alert('配置加载成功');
+                } catch (error) {
+                    alert('加载配置失败: ' + error.message);
+                }
+            }
+            
+            // 事件监听
+            saveConfigBtn.addEventListener('click', saveConfig);
+            loadConfigBtn.addEventListener('click', loadConfig);
+            
+            // 初始化时列出配置
+            listConfigs();
+        }
+        
+        // 批量替换功能
+        function setupBatchReplace() {
+            const findInput = document.getElementById('findInput');
+            const replaceInput = document.getElementById('replaceInput');
+            const batchReplaceBtn = document.getElementById('batchReplaceBtn');
+            
+            // 更新批量替换按钮状态
+            function updateBatchReplaceBtn() {
+                batchReplaceBtn.disabled = findInput.value.trim() === '';
+            }
+            
+            // 批量替换
+            async function batchReplace() {
+                const findStr = findInput.value.trim();
+                const replaceStr = replaceInput.value;
+                
+                if (!findStr) {
+                    alert('请输入要查找的字符');
+                    return;
+                }
+                
+                if (!confirm(`确定要将所有帧中的 "${findStr}" 替换为 "${replaceStr}" 吗？此操作不可撤销。`)) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/batch_replace', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            user_id: userId, 
+                            find_str: findStr, 
+                            replace_str: replaceStr 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    alert(data.message);
+                    // 重新加载帧
+                    loadExistingFrames();
+                } catch (error) {
+                    alert('批量替换失败: ' + error.message);
+                }
+            }
+            
+            // 事件监听
+            findInput.addEventListener('input', updateBatchReplaceBtn);
+            batchReplaceBtn.addEventListener('click', batchReplace);
+            
+            // 帧加载完成后更新按钮状态
+            const originalSetPlayControlsEnabled = setPlayControlsEnabled;
+            setPlayControlsEnabled = function(enabled) {
+                originalSetPlayControlsEnabled(enabled);
+                batchReplaceBtn.disabled = !enabled || findInput.value.trim() === '';
+            };
+        }
+        
         // 渲染参数更新函数
         function updateSpeed() {
             FRAME_RATE = parseInt(document.getElementById('speedSlider').value);
@@ -1318,4 +1758,4 @@
         }
     </script>
 </body>
-</html> 
+</html>

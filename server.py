@@ -147,7 +147,7 @@ def perform_conversion(user_id, video_file, params):
         config = DEFAULT_CONFIG.copy()
         
         # 设置用户专属输出目录
-        output_dir = f'ascii_frames_{user_id}'
+        output_dir = f'uploads/{user_id}/ascii_frames'
         config['output_dir'] = output_dir
         
         # 清空用户目录中的旧frame文件
@@ -291,7 +291,7 @@ def clear_frames():
         return jsonify({'error': '转换正在进行中，无法清空文件'}), 400
     
     try:
-        output_dir = f'ascii_frames_{user_id}'
+        output_dir = f'uploads/{user_id}/ascii_frames'
         if os.path.exists(output_dir):
             import glob
             frame_files = glob.glob(os.path.join(output_dir, 'frame_*.txt'))
@@ -331,7 +331,7 @@ def clear_frames():
 def serve_user_frames(user_id, filename):
     """提供用户专属的ASCII帧文件"""
     try:
-        return send_from_directory(f'ascii_frames_{user_id}', filename)
+        return send_from_directory(f'uploads/{user_id}/ascii_frames', filename)
     except FileNotFoundError:
         return "Frame not found", 404
 
@@ -361,6 +361,180 @@ def handle_disconnect():
     """WebSocket连接断开"""
     print('客户端已断开连接')
 
+@app.route('/api/save_config', methods=['POST'])
+def save_config():
+    """保存用户配置到JSON文件"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        config_name = data.get('config_name', 'default')
+        config = data.get('config', {})
+        
+        if not user_id:
+            return jsonify({'error': '用户ID不能为空'}), 400
+        
+        # 创建配置存储目录
+        config_dir = f'configs_{user_id}'
+        os.makedirs(config_dir, exist_ok=True)
+        
+        # 保存配置到JSON文件
+        config_path = os.path.join(config_dir, f'{config_name}.json')
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({'message': '配置保存成功', 'config_path': config_path})
+        
+    except Exception as e:
+        return jsonify({'error': f'保存配置失败: {str(e)}'}), 500
+
+@app.route('/api/load_config', methods=['POST'])
+def load_config():
+    """加载用户配置从JSON文件"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        config_name = data.get('config_name', 'default')
+        
+        if not user_id:
+            return jsonify({'error': '用户ID不能为空'}), 400
+        
+        config_dir = f'configs_{user_id}'
+        config_path = os.path.join(config_dir, f'{config_name}.json')
+        
+        if not os.path.exists(config_path):
+            return jsonify({'error': '配置文件不存在'}), 404
+        
+        # 加载配置
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        return jsonify({'message': '配置加载成功', 'config': config})
+        
+    except Exception as e:
+        return jsonify({'error': f'加载配置失败: {str(e)}'}), 500
+
+@app.route('/api/list_configs', methods=['POST'])
+def list_configs():
+    """列出用户所有配置文件"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': '用户ID不能为空'}), 400
+        
+        config_dir = f'configs_{user_id}'
+        if not os.path.exists(config_dir):
+            return jsonify({'configs': []})
+        
+        # 获取所有配置文件
+        configs = []
+        for filename in os.listdir(config_dir):
+            if filename.endswith('.json'):
+                config_name = os.path.splitext(filename)[0]
+                configs.append(config_name)
+        
+        return jsonify({'configs': configs})
+        
+    except Exception as e:
+        return jsonify({'error': f'列出配置失败: {str(e)}'}), 500
+
+@app.route('/api/get_frame', methods=['POST'])
+def get_frame():
+    """获取指定帧的内容"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        frame_index = data.get('frame_index')
+        
+        if not user_id or frame_index is None:
+            return jsonify({'error': '用户ID和帧索引不能为空'}), 400
+        
+        frame_id = str(frame_index).zfill(5)
+        frame_path = os.path.join(f'uploads/{user_id}/ascii_frames', f'frame_{frame_id}.txt')
+        
+        if not os.path.exists(frame_path):
+            return jsonify({'error': '帧文件不存在'}), 404
+        
+        with open(frame_path, 'r', encoding='utf-8') as f:
+            frame_content = f.read()
+        
+        return jsonify({'frame_content': frame_content})
+        
+    except Exception as e:
+        return jsonify({'error': f'获取帧失败: {str(e)}'}), 500
+
+@app.route('/api/save_frame', methods=['POST'])
+def save_frame():
+    """保存编辑后的帧内容"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        frame_index = data.get('frame_index')
+        frame_content = data.get('frame_content')
+        
+        if not user_id or frame_index is None or not frame_content:
+            return jsonify({'error': '用户ID、帧索引和帧内容不能为空'}), 400
+        
+        frame_id = str(frame_index).zfill(5)
+        frame_path = os.path.join(f'uploads/{user_id}/ascii_frames', f'frame_{frame_id}.txt')
+        
+        if not os.path.exists(frame_path):
+            return jsonify({'error': '帧文件不存在'}), 404
+        
+        with open(frame_path, 'w', encoding='utf-8') as f:
+            f.write(frame_content)
+        
+        return jsonify({'message': '帧保存成功'})
+        
+    except Exception as e:
+        return jsonify({'error': f'保存帧失败: {str(e)}'}), 500
+
+@app.route('/api/batch_replace', methods=['POST'])
+def batch_replace():
+    """批量替换所有帧中的字符"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        find_str = data.get('find_str')
+        replace_str = data.get('replace_str', '')
+        
+        if not user_id or not find_str:
+            return jsonify({'error': '用户ID和查找字符串不能为空'}), 400
+       # 获取帧目录
+        frames_dir = f'uploads/{user_id}/ascii_frames'
+        if not os.path.exists(frames_dir):
+            return jsonify({'error': '帧目录不存在'}), 404
+        
+        # 获取所有帧文件
+        import glob
+        frame_files = glob.glob(os.path.join(frames_dir, 'frame_*.txt'))
+        
+        if not frame_files:
+            return jsonify({'error': '没有找到帧文件'}), 404
+        
+        replaced_count = 0
+        
+        for frame_file in frame_files:
+            try:
+                with open(frame_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 替换字符
+                new_content = content.replace(find_str, replace_str)
+                
+                if new_content != content:
+                    with open(frame_file, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    replaced_count += 1
+            except Exception as e:
+                return jsonify({'error': f'处理帧文件失败: {str(e)}'}), 500
+        
+        return jsonify({'message': f'批量替换完成，共处理 {len(frame_files)} 帧，修改 {replaced_count} 帧'})
+        
+    except Exception as e:
+        return jsonify({'error': f'批量替换失败: {str(e)}'}), 500
+
 if __name__ == '__main__':
     # 确保输出目录存在
     os.makedirs('ascii_frames', exist_ok=True)
@@ -370,4 +544,4 @@ if __name__ == '__main__':
     print("🔧 服务器支持实时进度更新和参数调整")
     
     # 生产环境运行配置
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True) 
+    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
