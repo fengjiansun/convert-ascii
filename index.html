@@ -568,6 +568,15 @@
                 <div class="value-display" id="speedValue">30 FPS</div>
             </div>
             
+            <div class="control-group">
+                <label for="currentFrameDisplay">当前帧</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="currentFrameInput" min="0" max="99999" value="0" style="flex: 1;">
+                    <button class="btn btn-secondary" id="jumpToFrameBtn" disabled>跳转</button>
+                </div>
+                <div class="value-display" id="totalFramesDisplay">共 0 帧</div>
+            </div>
+            
             <h3>🎨 显示效果</h3>
             
             <div class="control-group">
@@ -607,6 +616,43 @@
                 <input type="range" id="contrastSlider" min="0.5" max="2" step="0.1" value="1">
                 <div class="value-display" id="contrastValue">100%</div>
             </div>
+            
+            <h3>✏️ 帧编辑</h3>
+            
+            <div class="control-group">
+                <button class="btn btn-secondary" id="editFrameBtn" disabled>编辑当前帧</button>
+            </div>
+            
+            <h3>💾 预设管理</h3>
+            
+            <div class="control-group">
+                <input type="text" id="presetNameInput" placeholder="预设名称">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button class="btn btn-secondary" id="savePresetBtn" style="flex: 1;">保存预设</button>
+                <button class="btn btn-secondary" id="loadPresetBtn" style="flex: 1;">加载预设</button>
+            </div>
+            
+            <div class="control-group">
+                <select id="presetsList" style="height: 100px;">
+                    <option value="">选择预设...</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-danger" id="deletePresetBtn" disabled>删除选中预设</button>
+            
+            <h3>🔄 批量操作</h3>
+            
+            <div class="control-group">
+                <input type="text" id="findCharInput" placeholder="要替换的字符">
+            </div>
+            
+            <div class="control-group">
+                <input type="text" id="replaceCharInput" placeholder="替换为 (留空删除)">
+            </div>
+            
+            <button class="btn btn-secondary" id="batchReplaceBtn" disabled>批量替换</button>
             
             <div class="status" id="renderStatus">
                 准备就绪
@@ -651,6 +697,7 @@
             setupEventListeners();
             setupTabs();
             loadExistingFrames();
+            loadPresets(); // 加载用户预设
         });
         
         // 初始化用户ID
@@ -728,6 +775,28 @@
                     customGroup.style.display = 'none';
                 }
             });
+            
+            // 帧控制
+            document.getElementById('jumpToFrameBtn').addEventListener('click', jumpToFrame);
+            document.getElementById('currentFrameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    jumpToFrame();
+                }
+            });
+            
+            // 帧编辑
+            document.getElementById('editFrameBtn').addEventListener('click', editFrame);
+            
+            // 预设管理
+            document.getElementById('savePresetBtn').addEventListener('click', savePreset);
+            document.getElementById('loadPresetBtn').addEventListener('click', loadPreset);
+            document.getElementById('deletePresetBtn').addEventListener('click', deletePreset);
+            document.getElementById('presetsList').addEventListener('change', function() {
+                document.getElementById('deletePresetBtn').disabled = !this.value;
+            });
+            
+            // 批量操作
+            document.getElementById('batchReplaceBtn').addEventListener('click', batchReplaceChars);
         }
         
         // 设置选项卡
@@ -1232,9 +1301,13 @@
             playBtn.disabled = !enabled;
             pauseBtn.disabled = !enabled;
             resetBtn.disabled = !enabled;
+            document.getElementById('jumpToFrameBtn').disabled = !enabled;
+            document.getElementById('editFrameBtn').disabled = !enabled;
+            document.getElementById('batchReplaceBtn').disabled = !enabled;
             
             if (enabled) {
                 renderStatus.textContent = `加载完成！共 ${frames.length} 帧`;
+                updateCurrentFrameDisplay();
             } else {
                 renderStatus.textContent = "加载中，请等待...";
             }
@@ -1251,6 +1324,7 @@
             const interval = 1000 / FRAME_RATE;
             animationInterval = setInterval(() => {
                 asciiElement.textContent = frames[currentFrame];
+                updateCurrentFrameDisplay();
                 currentFrame = (currentFrame + 1) % frames.length;
             }, interval);
         }
@@ -1276,8 +1350,283 @@
             if (frames.length > 0) {
                 asciiElement.textContent = frames[0];
             }
+            updateCurrentFrameDisplay();
             playBtn.style.background = '#0F0';
             pauseBtn.style.background = '#666';
+        }
+        
+        // 更新当前帧显示
+        function updateCurrentFrameDisplay() {
+            document.getElementById('currentFrameInput').value = currentFrame;
+            document.getElementById('totalFramesDisplay').textContent = `共 ${frames.length} 帧`;
+        }
+        
+        // 跳转到指定帧
+        function jumpToFrame() {
+            if (frames.length === 0) return;
+            
+            const frameIndex = parseInt(document.getElementById('currentFrameInput').value);
+            if (isNaN(frameIndex) || frameIndex < 0 || frameIndex >= frames.length) {
+                alert('请输入有效的帧索引');
+                return;
+            }
+            
+            currentFrame = frameIndex;
+            asciiElement.textContent = frames[currentFrame];
+            updateCurrentFrameDisplay();
+        }
+        
+        // 编辑当前帧
+        async function editFrame() {
+            if (frames.length === 0) return;
+            
+            pauseAnimation();
+            
+            const content = frames[currentFrame];
+            const editedContent = prompt('编辑当前帧的ASCII内容:', content);
+            
+            if (editedContent !== null && editedContent !== content) {
+                // 更新内存中的帧
+                frames[currentFrame] = editedContent;
+                asciiElement.textContent = editedContent;
+                
+                // 保存到服务器
+                try {
+                    const response = await fetch('/api/save_frame', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            frame_index: currentFrame,
+                            content: editedContent
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert('保存帧失败: ' + data.error);
+                    } else {
+                        alert('帧保存成功');
+                    }
+                } catch (error) {
+                    alert('保存帧失败: ' + error.message);
+                }
+            }
+        }
+        
+        // 加载用户预设
+        async function loadPresets() {
+            try {
+                console.log('开始加载预设，用户ID:', userId);
+                const response = await fetch(`/api/get_presets?user_id=${userId}`);
+                console.log('服务器响应状态:', response.status);
+                const data = await response.json();
+                console.log('服务器返回的数据:', data);
+                
+                if (data.error) {
+                    console.error('加载预设失败:', data.error);
+                    alert('加载预设失败: ' + data.error);
+                    return;
+                }
+                
+                const presetsList = document.getElementById('presetsList');
+                presetsList.innerHTML = '<option value="">选择预设...</option>';
+                
+                console.log('预设数量:', data.presets.length);
+                data.presets.forEach(preset => {
+                    console.log('添加预设:', preset.name);
+                    const option = document.createElement('option');
+                    option.value = preset.name;
+                    option.textContent = `${preset.name} (${preset.created_at})`;
+                    presetsList.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载预设失败:', error);
+                alert('加载预设失败: ' + error.message);
+            }
+        }
+        
+        // 保存预设
+        async function savePreset() {
+            const presetName = document.getElementById('presetNameInput').value.trim();
+            if (!presetName) {
+                alert('请输入预设名称');
+                return;
+            }
+            
+            const config = collectGenerationParams();
+            
+            try {
+                const response = await fetch('/api/save_preset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        preset_name: presetName,
+                        config: config
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    alert('保存预设失败: ' + data.error);
+                } else {
+                    alert('预设保存成功');
+                    document.getElementById('presetNameInput').value = '';
+                    loadPresets(); // 刷新预设列表
+                }
+            } catch (error) {
+                alert('保存预设失败: ' + error.message);
+            }
+        }
+        
+        // 加载预设
+        async function loadPreset() {
+            const presetsList = document.getElementById('presetsList');
+            const selectedPresetName = presetsList.value;
+            
+            if (!selectedPresetName) {
+                alert('请选择一个预设');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/get_presets?user_id=${userId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('加载预设失败: ' + data.error);
+                    return;
+                }
+                
+                const preset = data.presets.find(p => p.name === selectedPresetName);
+                if (!preset) {
+                    alert('预设不存在');
+                    return;
+                }
+                
+                // 应用预设参数
+                const config = preset.config;
+                document.getElementById('frameWidth').value = config.frame_width;
+                document.getElementById('frameWidthValue').textContent = config.frame_width + ' 字符';
+                document.getElementById('frameHeight').value = config.frame_height || '';
+                document.getElementById('brightness').value = config.brightness;
+                document.getElementById('brightnessValue').textContent = config.brightness;
+                document.getElementById('contrast').value = config.contrast;
+                document.getElementById('contrastValue').textContent = config.contrast;
+                document.getElementById('gamma').value = config.gamma;
+                document.getElementById('gammaValue').textContent = config.gamma;
+                document.getElementById('saturation').value = config.saturation;
+                document.getElementById('saturationValue').textContent = config.saturation;
+                document.getElementById('sharpness').value = config.sharpness;
+                document.getElementById('sharpnessValue').textContent = config.sharpness;
+                document.getElementById('startTime').value = config.start_time;
+                document.getElementById('duration').value = config.duration || '';
+                document.getElementById('frameSkip').value = config.frame_skip;
+                document.getElementById('invert').checked = config.invert;
+                document.getElementById('padding').checked = config.add_padding;
+                document.getElementById('mirrorFrames').checked = config.mirror_frames;
+                
+                // 设置字符集
+                if (config.ascii_chars === DEFAULT_CONFIG.ascii_chars_simple) {
+                    document.getElementById('charsetType').value = 'simple';
+                } else if (config.ascii_chars === DEFAULT_CONFIG.ascii_chars_detailed) {
+                    document.getElementById('charsetType').value = 'detailed';
+                } else {
+                    document.getElementById('charsetType').value = 'custom';
+                    document.getElementById('customChars').value = config.ascii_chars;
+                }
+                
+                // 显示/隐藏自定义字符集输入框
+                const customGroup = document.getElementById('customCharsGroup');
+                customGroup.style.display = document.getElementById('charsetType').value === 'custom' ? 'block' : 'none';
+                
+                alert('预设加载成功');
+            } catch (error) {
+                alert('加载预设失败: ' + error.message);
+            }
+        }
+        
+        // 删除预设
+        async function deletePreset() {
+            const presetsList = document.getElementById('presetsList');
+            const selectedPresetName = presetsList.value;
+            
+            if (!selectedPresetName) {
+                alert('请选择一个预设');
+                return;
+            }
+            
+            if (!confirm(`确定要删除预设 "${selectedPresetName}" 吗？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/delete_preset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        preset_name: selectedPresetName
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    alert('删除预设失败: ' + data.error);
+                } else {
+                    alert('预设删除成功');
+                    loadPresets(); // 刷新预设列表
+                }
+            } catch (error) {
+                alert('删除预设失败: ' + error.message);
+            }
+        }
+        
+        // 批量替换字符
+        async function batchReplaceChars() {
+            const findChar = document.getElementById('findCharInput').value;
+            const replaceChar = document.getElementById('replaceCharInput').value;
+            
+            if (!findChar) {
+                alert('请输入要替换的字符');
+                return;
+            }
+            
+            if (!confirm(`确定要将所有帧中的 "${findChar}" 替换为 "${replaceChar}" 吗？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/batch_replace', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        find_char: findChar,
+                        replace_char: replaceChar
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    alert('批量替换失败: ' + data.error);
+                } else {
+                    alert(`批量替换完成，共修改 ${data.replaced_count} 个帧文件`);
+                    // 重新加载帧
+                    loadExistingFrames();
+                }
+            } catch (error) {
+                alert('批量替换失败: ' + error.message);
+            }
         }
         
         // 渲染参数更新函数
@@ -1318,4 +1667,4 @@
         }
     </script>
 </body>
-</html> 
+</html>

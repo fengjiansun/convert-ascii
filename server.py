@@ -16,8 +16,11 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # 上传文件存储目录
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'm4v'}
+# 预设配置存储目录
+PRESETS_FOLDER = 'presets'
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PRESETS_FOLDER, exist_ok=True)
 
 # 全局变量存储每个用户的转换状态
 user_conversions = {}
@@ -327,6 +330,192 @@ def clear_frames():
     except Exception as e:
         return jsonify({'error': f'清空失败: {str(e)}'}), 500
 
+@app.route('/api/get_frame', methods=['GET'])
+def get_frame():
+    """获取单个帧的内容"""
+    user_id = request.args.get('user_id')
+    frame_index = request.args.get('frame_index')
+    
+    if not user_id or not frame_index:
+        return jsonify({'error': '用户ID和帧索引不能为空'}), 400
+    
+    try:
+        frame_index = int(frame_index)
+        output_dir = f'ascii_frames_{user_id}'
+        frame_file = os.path.join(output_dir, f'frame_{frame_index:05d}.txt')
+        
+        if os.path.exists(frame_file):
+            with open(frame_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return jsonify({'content': content})
+        else:
+            return jsonify({'error': '帧文件不存在'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': f'获取帧失败: {str(e)}'}), 500
+
+@app.route('/api/save_frame', methods=['POST'])
+def save_frame():
+    """保存单个帧的内容"""
+    data = request.json
+    user_id = data.get('user_id')
+    frame_index = data.get('frame_index')
+    content = data.get('content')
+    
+    if not user_id or not frame_index or not content:
+        return jsonify({'error': '用户ID、帧索引和内容不能为空'}), 400
+    
+    try:
+        frame_index = int(frame_index)
+        output_dir = f'ascii_frames_{user_id}'
+        frame_file = os.path.join(output_dir, f'frame_{frame_index:05d}.txt')
+        
+        if os.path.exists(output_dir):
+            with open(frame_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return jsonify({'message': '帧保存成功'})
+        else:
+            return jsonify({'error': '用户目录不存在'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': f'保存帧失败: {str(e)}'}), 500
+
+@app.route('/api/get_presets', methods=['GET'])
+def get_presets():
+    """获取用户的所有预设配置"""
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': '用户ID不能为空'}), 400
+    
+    try:
+        user_presets_dir = os.path.join(PRESETS_FOLDER, user_id)
+        presets = []
+        
+        print(f'获取预设: 用户ID {user_id}')
+        print(f'用户预设目录: {user_presets_dir}')
+        print(f'目录是否存在: {os.path.exists(user_presets_dir)}')
+        
+        if os.path.exists(user_presets_dir):
+            print(f'目录中的文件: {os.listdir(user_presets_dir)}')
+            for filename in os.listdir(user_presets_dir):
+                if filename.endswith('.json'):
+                    preset_path = os.path.join(user_presets_dir, filename)
+                    print(f'读取预设文件: {preset_path}')
+                    with open(preset_path, 'r', encoding='utf-8') as f:
+                        try:
+                            preset = json.load(f)
+                            presets.append(preset)
+                            print(f'成功加载预设: {preset["name"]}')
+                        except json.JSONDecodeError as e:
+                            print(f'解析预设文件失败: {preset_path}, 错误: {e}')
+                            continue
+        
+        print(f'返回预设数量: {len(presets)}')
+        return jsonify({'presets': presets})
+            
+    except Exception as e:
+        print(f'获取预设失败: {str(e)}')
+        return jsonify({'error': f'获取预设失败: {str(e)}'}), 500
+
+@app.route('/api/save_preset', methods=['POST'])
+def save_preset():
+    """保存预设配置"""
+    data = request.json
+    user_id = data.get('user_id')
+    preset_name = data.get('preset_name')
+    config = data.get('config')
+    
+    if not user_id or not preset_name or not config:
+        return jsonify({'error': '用户ID、预设名称和配置不能为空'}), 400
+    
+    try:
+        user_presets_dir = os.path.join(PRESETS_FOLDER, user_id)
+        os.makedirs(user_presets_dir, exist_ok=True)
+        
+        preset_path = os.path.join(user_presets_dir, f'{preset_name}.json')
+        
+        with open(preset_path, 'w', encoding='utf-8') as f:
+            json.dump({                'name': preset_name,                'config': config,                'created_at': time.strftime('%Y-%m-%d %H:%M:%S'),                'updated_at': time.strftime('%Y-%m-%d %H:%M:%S')            }, f, ensure_ascii=False, indent=2)
+        
+        # 调试信息：检查文件是否真正保存
+        if os.path.exists(preset_path):
+            with open(preset_path, 'r', encoding='utf-8') as f:
+                saved_data = json.load(f)
+                print(f'预设保存成功: {preset_name} for user {user_id}')
+                print(f'保存的配置: {saved_data}')
+        else:
+            print(f'预设保存失败: 文件不存在 {preset_path}')
+        
+        return jsonify({'message': '预设保存成功'})
+            
+    except Exception as e:
+        print(f'保存预设失败: {str(e)}')
+        return jsonify({'error': f'保存预设失败: {str(e)}'}), 500
+
+@app.route('/api/delete_preset', methods=['POST'])
+def delete_preset():
+    """删除预设配置"""
+    data = request.json
+    user_id = data.get('user_id')
+    preset_name = data.get('preset_name')
+    
+    if not user_id or not preset_name:
+        return jsonify({'error': '用户ID和预设名称不能为空'}), 400
+    
+    try:
+        user_presets_dir = os.path.join(PRESETS_FOLDER, user_id)
+        preset_path = os.path.join(user_presets_dir, f'{preset_name}.json')
+        
+        if os.path.exists(preset_path):
+            os.remove(preset_path)
+            return jsonify({'message': '预设删除成功'})
+        else:
+            return jsonify({'error': '预设不存在'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': f'删除预设失败: {str(e)}'}), 500
+
+@app.route('/api/batch_replace', methods=['POST'])
+def batch_replace():
+    """批量替换所有帧中的字符"""
+    data = request.json
+    user_id = data.get('user_id')
+    find_char = data.get('find_char')
+    replace_char = data.get('replace_char')
+    
+    if not user_id or not find_char:
+        return jsonify({'error': '用户ID和要查找的字符不能为空'}), 400
+    
+    try:
+        output_dir = f'ascii_frames_{user_id}'
+        if not os.path.exists(output_dir):
+            return jsonify({'error': '用户目录不存在'}), 404
+        
+        import glob
+        frame_files = glob.glob(os.path.join(output_dir, 'frame_*.txt'))
+        replaced_count = 0
+        
+        for frame_file in frame_files:
+            try:
+                with open(frame_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                if find_char in content:
+                    new_content = content.replace(find_char, replace_char or '')
+                    with open(frame_file, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    replaced_count += 1
+            except Exception:
+                continue
+        
+        return jsonify({
+            'message': f'批量替换完成，共修改 {replaced_count} 个帧文件',
+            'replaced_count': replaced_count
+        })
+            
+    except Exception as e:
+        return jsonify({'error': f'批量替换失败: {str(e)}'}), 500
+
 @app.route('/ascii_frames_<user_id>/<filename>')
 def serve_user_frames(user_id, filename):
     """提供用户专属的ASCII帧文件"""
@@ -370,4 +559,4 @@ if __name__ == '__main__':
     print("🔧 服务器支持实时进度更新和参数调整")
     
     # 生产环境运行配置
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True) 
+    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
