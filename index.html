@@ -832,6 +832,22 @@
             }
         }
 
+        // 视频预览相关变量
+        let videoPlayer = null;
+        let videoPreviewContainer = null;
+        let timeSelectionBar = null;
+        let selectionRange = null;
+        let startMarker = null;
+        let endMarker = null;
+        let currentMarker = null;
+        let selectedStartTime = 0;
+        let selectedEndTime = 0;
+        let videoDuration = 0;
+        let isDraggingStart = false;
+        let isDraggingEnd = false;
+        let isDraggingCurrent = false;
+        let isDraggingSelection = false;
+        
         // 文件选择处理
         function handleFileSelection(event) {
             const file = event.target.files[0];
@@ -873,9 +889,142 @@
                 
                 // 显示清除按钮
                 document.getElementById('clearFileBtn').style.display = 'block';
+                
+                // 初始化视频预览
+                initializeVideoPreview(file);
             } else {
                 clearFileSelection();
             }
+        }
+        
+        // 初始化视频预览
+        function initializeVideoPreview(file) {
+            // 创建视频预览容器
+            const fileSelection = document.querySelector('.file-selection');
+            const previewContainer = document.createElement('div');
+            previewContainer.id = 'videoPreviewContainer';
+            previewContainer.style.cssText = `
+                margin-top: 20px;
+                padding: 20px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 10px;
+                box-sizing: border-box;
+            `;
+            
+            // 创建视频播放器
+            videoPlayer = document.createElement('video');
+            videoPlayer.style.width = '100%';
+            videoPlayer.style.maxWidth = '800px';
+            videoPlayer.style.display = 'block';
+            videoPlayer.style.margin = '0 auto 15px auto';
+            videoPlayer.style.borderRadius = '5px';
+            videoPlayer.controls = true;
+            videoPlayer.preload = 'auto';
+            
+            // 创建时间选择条
+            timeSelectionBar = document.createElement('div');
+            timeSelectionBar.style.cssText = `
+                width: 100%;
+                max-width: 800px;
+                height: 30px;
+                background: rgba(100, 100, 100, 0.5);
+                border-radius: 5px;
+                margin: 0 auto;
+                position: relative;
+                cursor: pointer;
+            `;
+            
+            // 创建选择范围
+            selectionRange = document.createElement('div');
+            selectionRange.style.cssText = `
+                height: 100%;
+                background: rgba(68, 255, 68, 0.5);
+                border-radius: 5px;
+                position: absolute;
+                pointer-events: none;
+            `;
+            timeSelectionBar.appendChild(selectionRange);
+            
+            // 创建开始标记
+            startMarker = document.createElement('div');
+            startMarker.style.cssText = `
+                width: 12px;
+                height: 120%;
+                background: #44ff44;
+                border-radius: 3px;
+                position: absolute;
+                top: -10%;
+                cursor: ew-resize;
+                pointer-events: auto;
+            `;
+            timeSelectionBar.appendChild(startMarker);
+            
+            // 创建结束标记
+            endMarker = document.createElement('div');
+            endMarker.style.cssText = `
+                width: 12px;
+                height: 120%;
+                background: #ff4444;
+                border-radius: 3px;
+                position: absolute;
+                top: -10%;
+                cursor: ew-resize;
+                pointer-events: auto;
+            `;
+            timeSelectionBar.appendChild(endMarker);
+            
+            // 创建当前时间标记
+            currentMarker = document.createElement('div');
+            currentMarker.style.cssText = `
+                width: 2px;
+                height: 100%;
+                background: #fff;
+                position: absolute;
+                top: 0;
+                pointer-events: none;
+            `;
+            timeSelectionBar.appendChild(currentMarker);
+            
+            // 创建时间范围显示
+            const timeRangeDisplay = document.createElement('div');
+            timeRangeDisplay.id = 'timeRangeDisplay';
+            timeRangeDisplay.style.cssText = `
+                margin-top: 10px;
+                text-align: center;
+                color: #fff;
+                font-size: 14px;
+            `;
+            
+            // 将所有元素添加到预览容器
+            previewContainer.appendChild(videoPlayer);
+            previewContainer.appendChild(timeSelectionBar);
+            previewContainer.appendChild(timeRangeDisplay);
+            
+            // 将预览容器添加到页面
+            fileSelection.parentNode.appendChild(previewContainer);
+            
+            // 设置视频源
+            const videoURL = URL.createObjectURL(file);
+            videoPlayer.src = videoURL;
+            
+            // 当视频可以播放时初始化时间选择
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                videoDuration = videoPlayer.duration;
+                selectedEndTime = videoDuration;
+                updateSelectionBar();
+                updateSelectedTimeRange();
+            });
+            
+            // 当视频播放时更新当前时间标记
+            videoPlayer.addEventListener('timeupdate', () => {
+                updateCurrentMarker();
+            });
+            
+            // 添加时间选择条事件
+            timeSelectionBar.addEventListener('click', handleBarClick);
+            timeSelectionBar.addEventListener('mousedown', handleBarMouseDown);
+            document.addEventListener('mousemove', handleBarMouseMove);
+            document.addEventListener('mouseup', handleBarMouseUp);
         }
         
         // 清除文件选择
@@ -888,6 +1037,17 @@
             const fileSelection = document.querySelector('.file-selection');
             fileSelection.style.borderColor = '#0F0';
             fileSelection.style.background = 'transparent';
+            
+            // 隐藏视频预览
+            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+            if (videoPreviewContainer) {
+                videoPreviewContainer.remove();
+            }
+            
+            // 重置时间选择
+            selectedStartTime = 0;
+            selectedEndTime = 0;
+            videoDuration = 0;
         }
         
         // 设置自定义字符集
@@ -899,6 +1059,10 @@
         
         // 开始生成
         async function startGeneration() {
+            // 应用用户选择的时间范围
+            if (selectedStartTime > 0 || selectedEndTime < videoDuration) {
+                applySelection();
+            }
             const params = collectGenerationParams();
             let videoFile = 'bottom-banner.mp4';
             
@@ -1316,6 +1480,163 @@
             const contrast = parseFloat(document.getElementById('contrastSlider').value);
             asciiElement.style.filter = `contrast(${contrast})`;
         }
+        
+        // 时间选择条点击事件
+        function handleBarClick(e) {
+            const rect = timeSelectionBar.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const ratio = clickX / rect.width;
+            const clickTime = ratio * videoDuration;
+            
+            // 如果点击位置在开始标记附近，拖动开始标记
+            // 如果点击位置在结束标记附近，拖动结束标记
+            // 否则设置当前时间
+            const startX = (selectedStartTime / videoDuration) * rect.width;
+            const endX = (selectedEndTime / videoDuration) * rect.width;
+            
+            if (Math.abs(clickX - startX) < 15) {
+                isDraggingStart = true;
+                updateSelectionStart(ratio);
+            } else if (Math.abs(clickX - endX) < 15) {
+                isDraggingEnd = true;
+                updateSelectionEnd(ratio);
+            } else {
+                videoPlayer.currentTime = clickTime;
+            }
+        }
+        
+        // 时间选择条鼠标按下事件
+        function handleBarMouseDown(e) {
+            const rect = timeSelectionBar.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const ratio = clickX / rect.width;
+            
+            const startX = (selectedStartTime / videoDuration) * rect.width;
+            const endX = (selectedEndTime / videoDuration) * rect.width;
+            const selectionWidth = endX - startX;
+            
+            // 检查是否点击在开始标记上
+            if (Math.abs(clickX - startX) < 15) {
+                isDraggingStart = true;
+            } 
+            // 检查是否点击在结束标记上
+            else if (Math.abs(clickX - endX) < 15) {
+                isDraggingEnd = true;
+            } 
+            // 检查是否点击在选择范围内
+            else if (clickX >= startX && clickX <= endX) {
+                const offset = clickX - startX;
+                // 如果点击位置在选择范围内但不在标记上，则拖动整个选择范围
+                if (offset > 15 && offset < (selectionWidth - 15)) {
+                    isDraggingSelection = true;
+                }
+            }
+        }
+        
+        // 时间选择条鼠标移动事件
+        function handleBarMouseMove(e) {
+            if (isDraggingStart || isDraggingEnd || isDraggingSelection) {
+                const rect = timeSelectionBar.getBoundingClientRect();
+                const mouseX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                const ratio = mouseX / rect.width;
+                
+                if (isDraggingStart) {
+                    updateSelectionStart(ratio);
+                } else if (isDraggingEnd) {
+                    updateSelectionEnd(ratio);
+                } else if (isDraggingSelection) {
+                    const selectionDuration = selectedEndTime - selectedStartTime;
+                    const newStartRatio = Math.max(0, Math.min(1, ratio - (selectionDuration / videoDuration) / 2));
+                    updateSelectionStart(newStartRatio);
+                    updateSelectionEnd(newStartRatio + (selectionDuration / videoDuration));
+                }
+            }
+        }
+        
+        // 时间选择条鼠标释放事件
+        function handleBarMouseUp() {
+            isDraggingStart = false;
+            isDraggingEnd = false;
+            isDraggingCurrent = false;
+            isDraggingSelection = false;
+        }
+        
+        // 更新选择开始时间
+        function updateSelectionStart(ratio) {
+            const newStartTime = ratio * videoDuration;
+            selectedStartTime = Math.max(0, Math.min(newStartTime, selectedEndTime - 0.1));
+            updateSelectionBar();
+            updateSelectedTimeRange();
+        }
+        
+        // 更新选择结束时间
+        function updateSelectionEnd(ratio) {
+            const newEndTime = ratio * videoDuration;
+            selectedEndTime = Math.min(videoDuration, Math.max(newEndTime, selectedStartTime + 0.1));
+            updateSelectionBar();
+            updateSelectedTimeRange();
+        }
+        
+        // 更新选择条显示
+        function updateSelectionBar() {
+            if (!timeSelectionBar || !videoPlayer) return;
+            
+            const barWidth = timeSelectionBar.offsetWidth;
+            const startTimeRatio = selectedStartTime / videoDuration;
+            const endTimeRatio = selectedEndTime / videoDuration;
+            
+            startMarker.style.left = `${startTimeRatio * 100}%`;
+            endMarker.style.left = `${endTimeRatio * 100}%`;
+            selectionRange.style.left = `${startTimeRatio * 100}%`;
+            selectionRange.style.width = `${(endTimeRatio - startTimeRatio) * 100}%`;
+        }
+        
+        // 更新当前时间标记
+        function updateCurrentMarker() {
+            if (!currentMarker || !videoPlayer) return;
+            
+            const currentTimeRatio = videoPlayer.currentTime / videoDuration;
+            currentMarker.style.left = `${currentTimeRatio * 100}%`;
+        }
+        
+        // 更新选择时间范围显示
+        function updateSelectedTimeRange() {
+            const startTimeDisplay = formatTime(selectedStartTime);
+            const endTimeDisplay = formatTime(selectedEndTime);
+            const selectedTimeRange = document.getElementById('timeRangeDisplay');
+            if (selectedTimeRange) {
+                selectedTimeRange.textContent = `${startTimeDisplay} - ${endTimeDisplay}`;
+            }
+        }
+        
+        // 格式化时间
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 100);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+        }
+        
+        // 应用选择的时间范围
+        function applySelection() {
+            // 更新高级设置中的开始时间和时长
+            document.getElementById('startTime').value = selectedStartTime.toFixed(2);
+            document.getElementById('duration').value = (selectedEndTime - selectedStartTime).toFixed(2);
+            
+            // 显示提示信息
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status success';
+            statusDiv.textContent = '时间范围已应用！';
+            statusDiv.style.marginTop = '10px';
+            
+            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+            videoPreviewContainer.appendChild(statusDiv);
+            
+            // 3秒后隐藏提示信息
+            setTimeout(() => {
+                statusDiv.remove();
+            }, 3000);
+        }
     </script>
 </body>
-</html> 
+</html>
