@@ -162,7 +162,34 @@ class AsciiConverter:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = cap.get(cv2.CAP_PROP_FPS)
         
-        print(f"视频信息：{total_frames} 帧，{fps:.2f} FPS")
+        # 由于FFmpeg可能返回不准确的总帧数，我们需要手动计算
+        # 先跳到最后一帧，然后获取当前帧位置
+        cap.set(cv2.CAP_PROP_POS_FRAMES, total_frames - 1)
+        ret, frame = cap.read()
+        if ret:
+            actual_total_frames = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) + 1
+            print(f"修正前视频信息：{total_frames} 帧，{fps:.2f} FPS")
+            print(f"修正后视频信息：{actual_total_frames} 帧，{fps:.2f} FPS")
+            total_frames = actual_total_frames
+        else:
+            print(f"视频信息：{total_frames} 帧，{fps:.2f} FPS")
+        
+        # 跳回开始位置
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        
+        # 再次验证总帧数 - 通过实际读取所有帧
+        frame_count = 0
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frame_count += 1
+        
+        print(f"实际读取帧数：{frame_count} 帧")
+        total_frames = frame_count
+        
+        # 跳回开始位置
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         
         # 计算处理范围
         start_frame = int(self.config["start_time"] * fps)
@@ -170,6 +197,9 @@ class AsciiConverter:
             end_frame = min(start_frame + int(self.config["duration"] * fps), total_frames)
         else:
             end_frame = total_frames
+        
+        # 跳回开始位置
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
         
         # 设置开始位置
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)

@@ -27,10 +27,7 @@ def get_user_conversion_state(user_id):
     if user_id not in user_conversions:
         user_conversions[user_id] = {
             'status': 'idle',  # idle, running, completed, error
-            'progress': 0,
-            'current_frame': 0,
-            'total_frames': 0,
-            'message': ''
+            'videos': []  # 存储每个视频的转换状态
         }
     return user_conversions[user_id]
 
@@ -92,16 +89,10 @@ def convert_video():
         if not user_id:
             return jsonify({'error': '用户ID不能为空'}), 400
             
-        video_file = data.get('video_file', 'bottom-banner.mp4')
-        params = data.get('params', {})
-        
-        # 如果是上传的文件，使用完整路径
-        if video_file != 'bottom-banner.mp4' and not os.path.isabs(video_file):
-            user_upload_dir = os.path.join(UPLOAD_FOLDER, user_id)
-            uploaded_file_path = os.path.join(user_upload_dir, video_file)
-            if os.path.exists(uploaded_file_path):
-                video_file = uploaded_file_path
-        
+        videos = data.get('videos', [])
+        if not videos:
+            return jsonify({'error': '没有提供视频文件'}), 400
+            
         # 获取用户转换状态
         user_conversion = get_user_conversion_state(user_id)
         
@@ -112,17 +103,38 @@ def convert_video():
         # 重置转换状态
         user_conversion.update({
             'status': 'running',
-            'progress': 0,
-            'current_frame': 0,
-            'total_frames': 0,
-            'message': '正在启动转换...'
+            'videos': []
         })
+        
+        # 为每个视频创建初始状态
+        for i, video_data in enumerate(videos):
+            video_file = video_data.get('video_file')
+            video_params = video_data.get('params', {})
+            
+            # 如果是上传的文件，使用完整路径
+            if video_file != 'bottom-banner.mp4' and not os.path.isabs(video_file):
+                user_upload_dir = os.path.join(UPLOAD_FOLDER, user_id)
+                uploaded_file_path = os.path.join(user_upload_dir, video_file)
+                if os.path.exists(uploaded_file_path):
+                    video_file = uploaded_file_path
+            
+            user_conversion['videos'].append({
+                'video_index': i,
+                'video_file': video_file,
+                'params': video_params,
+                'status': 'running',
+                'progress': 0,
+                'current_frame': 0,
+                'total_frames': 0,
+                'message': '正在启动转换...',
+                'frame_folder': f'ascii_frames_{user_id}_{i}'
+            })
         
         # 广播开始状态（发送给特定用户）
         socketio.emit('conversion_update', user_conversion, room=user_id)
         
         # 在新线程中执行转换
-        thread = threading.Thread(target=perform_conversion, args=(user_id, video_file, params))
+        thread = threading.Thread(target=perform_conversions, args=(user_id, user_conversion['videos']))
         thread.daemon = True
         thread.start()
         
@@ -138,19 +150,72 @@ def convert_video():
             socketio.emit('conversion_update', user_conversion, room=user_id)
         return jsonify({'error': str(e)}), 500
 
-def perform_conversion(user_id, video_file, params):
-    """执行视频转换的实际工作"""
+def perform_conversions(user_id, videos):
+    """执行多个视频转换的实际工作"""
     user_conversion = get_user_conversion_state(user_id)
+    
+    try:
+        # 创建线程列表
+        threads = []
+        
+        # 为每个视频创建一个线程
+        for video in videos:
+            thread = threading.Thread(target=perform_single_conversion, args=(user_id, video))
+            thread.daemon = True
+            thread.start()
+            threads.append(thread)
+        
+        # 等待所有线程完成
+        for thread in threads:
+            thread.join()
+        
+        # 检查所有视频是否都完成
+        all_completed = all(video['status'] == 'completed' for video in user_conversion['videos'])
+        
+        if all_completed:
+            user_conversion.update({
+                'status': 'completed',
+                'message': '所有视频转换完成！'
+            })
+        else:
+            # 检查是否有错误
+            has_error = any(video['status'] == 'error' for video in user_conversion['videos'])
+            if has_error:
+                user_conversion.update({
+                    'status': 'error',
+                    'message': '部分视频转换失败！'
+                })
+            else:
+                user_conversion.update({
+                    'status': 'completed',
+                    'message': '所有视频转换完成！'
+                })
+        
+    except Exception as e:
+        user_conversion.update({
+            'status': 'error',
+            'message': f'转换失败: {str(e)}'
+        })
+    
+    # 广播最终状态
+    socketio.emit('conversion_update', user_conversion, room=user_id)
+
+def perform_single_conversion(user_id, video):
+    """执行单个视频转换的实际工作"""
+    user_conversion = get_user_conversion_state(user_id)
+    video_index = video['video_index']
+    video_file = video['video_file']
+    params = video['params']
+    output_dir = video['frame_folder']
     
     try:
         # 构建配置
         config = DEFAULT_CONFIG.copy()
         
-        # 设置用户专属输出目录
-        output_dir = f'ascii_frames_{user_id}'
+        # 设置输出目录
         config['output_dir'] = output_dir
         
-        # 清空用户目录中的旧frame文件
+        # 清空目录中的旧frame文件
         if os.path.exists(output_dir):
             import glob
             old_frames = glob.glob(os.path.join(output_dir, 'frame_*.txt'))
@@ -159,10 +224,15 @@ def perform_conversion(user_id, video_file, params):
                     os.remove(old_frame)
                 except OSError:
                     pass  # 忽略删除失败的文件
-            user_conversion['message'] = f'已清理 {len(old_frames)} 个旧帧文件'
-            socketio.emit('conversion_update', user_conversion, room=user_id)
+            video['message'] = f'已清理 {len(old_frames)} 个旧帧文件'
+            socketio.emit('conversion_update', {
+                'video_index': video_index,
+                'status': 'running',
+                'progress': 0,
+                'message': video['message']
+            }, room=user_id)
         
-        # 确保用户目录存在
+        # 确保目录存在
         os.makedirs(output_dir, exist_ok=True)
         
         # 更新配置参数
@@ -196,22 +266,34 @@ def perform_conversion(user_id, video_file, params):
         
         # 定义进度回调函数
         def progress_callback(progress, current, total):
-            user_conversion.update({
+            video.update({
                 'progress': progress * 100,
                 'current_frame': current,
                 'total_frames': total,
                 'message': f'正在处理第 {current}/{total} 帧'
             })
-            socketio.emit('conversion_update', user_conversion, room=user_id)
+            socketio.emit('conversion_update', {
+                'video_index': video_index,
+                'status': 'running',
+                'progress': video['progress'],
+                'current_frame': video['current_frame'],
+                'total_frames': video['total_frames'],
+                'message': video['message']
+            }, room=user_id)
         
         # 执行转换
-        user_conversion['message'] = '正在分析视频...'
-        socketio.emit('conversion_update', user_conversion, room=user_id)
+        video['message'] = '正在分析视频...'
+        socketio.emit('conversion_update', {
+            'video_index': video_index,
+            'status': 'running',
+            'progress': 0,
+            'message': video['message']
+        }, room=user_id)
         
         frame_count = converter.video_to_ascii_frames(video_file, progress_callback)
         
         if frame_count > 0:
-            user_conversion.update({
+            video.update({
                 'status': 'completed',
                 'progress': 100,
                 'current_frame': frame_count,
@@ -219,19 +301,27 @@ def perform_conversion(user_id, video_file, params):
                 'message': f'转换完成！共生成 {frame_count} 帧'
             })
         else:
-            user_conversion.update({
+            video.update({
                 'status': 'error',
                 'message': '转换失败：未生成任何帧'
             })
             
     except Exception as e:
-        user_conversion.update({
+        video.update({
             'status': 'error',
             'message': f'转换失败: {str(e)}'
         })
     
     # 广播最终状态
-    socketio.emit('conversion_update', user_conversion, room=user_id)
+    socketio.emit('conversion_update', {
+        'video_index': video_index,
+        'status': video['status'],
+        'progress': video['progress'],
+        'current_frame': video['current_frame'],
+        'total_frames': video['total_frames'],
+        'message': video['message'],
+        'frame_folder': video['frame_folder']
+    }, room=user_id)
 
 @app.route('/api/status', methods=['GET', 'POST'])
 def get_status():
@@ -266,11 +356,11 @@ def cancel_conversion():
     if user_conversion['status'] == 'running':
         user_conversion.update({
             'status': 'idle',
-            'progress': 0,
-            'current_frame': 0,
-            'total_frames': 0,
             'message': '转换已取消'
         })
+        # 取消所有视频的转换
+        for video in user_conversion['videos']:
+            video['status'] = 'idle'
         socketio.emit('conversion_update', user_conversion, room=user_id)
         return jsonify({'message': '转换已取消'})
     else:
@@ -327,6 +417,31 @@ def clear_frames():
     except Exception as e:
         return jsonify({'error': f'清空失败: {str(e)}'}), 500
 
+@app.route('/api/check_frames/<frame_folder>')
+def check_frames(frame_folder):
+    """检查特定视频的帧文件是否生成完成"""
+    try:
+        # 检查目录是否存在
+        if not os.path.exists(frame_folder):
+            return jsonify({'status': 'error', 'message': '目录不存在'})
+        
+        # 获取所有帧文件
+        import glob
+        frame_files = glob.glob(os.path.join(frame_folder, 'frame_*.txt'))
+        
+        # 按帧号排序
+        frame_files.sort()
+        
+        # 检查是否有帧文件
+        if not frame_files:
+            return jsonify({'status': 'running', 'message': '正在生成帧文件...'})
+        
+        # 返回帧文件列表
+        return jsonify({'status': 'completed', 'frames': [os.path.basename(f) for f in frame_files]})
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
 @app.route('/ascii_frames_<user_id>/<filename>')
 def serve_user_frames(user_id, filename):
     """提供用户专属的ASCII帧文件"""
@@ -335,10 +450,13 @@ def serve_user_frames(user_id, filename):
     except FileNotFoundError:
         return "Frame not found", 404
 
-@app.route('/ascii_frames/<filename>')
-def serve_frames(filename):
-    """提供ASCII帧文件（向后兼容）"""
-    return send_from_directory('ascii_frames', filename)
+@app.route('/frames/<frame_folder>/<filename>')
+def serve_frames(frame_folder, filename):
+    """提供ASCII帧文件"""
+    try:
+        return send_from_directory(frame_folder, filename)
+    except FileNotFoundError:
+        return "Frame not found", 404
 
 @socketio.on('connect')
 def handle_connect():
@@ -370,4 +488,4 @@ if __name__ == '__main__':
     print("🔧 服务器支持实时进度更新和参数调整")
     
     # 生产环境运行配置
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True) 
+    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
